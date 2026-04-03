@@ -1,0 +1,40 @@
+# === Quiz Data (generated at runtime) ===
+data/*.json
+!data/.gitkeep
+
+# === OS Files ===
+.DS_Store
+Thumbs.db
+Desktop.ini
+ehthumbs.db
+
+# === IDE / Editor ===
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.project
+.settings/
+.buildpath
+*.sublime-workspace
+*.sublime-project
+
+# === PHP ===
+vendor/
+composer.lock
+*.phar
+
+# === Logs ===
+*.log
+error_log
+
+# === Environment ===
+.env
+.env.local
+.env.*.local
+
+# === Misc ===
+.gemini/
+node_modules/
+.cache/

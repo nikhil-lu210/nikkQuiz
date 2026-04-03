@@ -1,0 +1,92 @@
+[
+  {
+    "id": 1,
+    "question": "What is the capital of France?",
+    "options": ["Berlin", "Madrid", "Paris", "Rome"],
+    "answer": 2
+  },
+  {
+    "id": 2,
+    "question": "Which planet is closest to the Sun?",
+    "options": ["Venus", "Mercury", "Earth", "Mars"],
+    "answer": 1
+  },
+  {
+    "id": 3,
+    "question": "What is 2 + 2?",
+    "options": ["3", "4", "5", "6"],
+    "answer": 1
+  },
+  {
+    "id": 4,
+    "question": "Who wrote 'Romeo and Juliet'?",
+    "options": ["Charles Dickens", "William Shakespeare", "Jane Austen", "Mark Twain"],
+    "answer": 1
+  },
+  {
+    "id": 5,
+    "question": "What is the chemical symbol for water?",
+    "options": ["O2", "CO2", "H2O", "NaCl"],
+    "answer": 2
+  },
+  {
+    "id": 6,
+    "question": "Which continent is the largest by area?",
+    "options": ["Africa", "North America", "Asia", "Europe"],
+    "answer": 2
+  },
+  {
+    "id": 7,
+    "question": "What is the speed of light approximately?",
+    "options": ["300,000 km/s", "150,000 km/s", "1,000,000 km/s", "3,000 km/s"],
+    "answer": 0
+  },
+  {
+    "id": 8,
+    "question": "Which programming language is known as the language of the web?",
+    "options": ["Python", "Java", "JavaScript", "C++"],
+    "answer": 2
+  },
+  {
+    "id": 9,
+    "question": "How many bones does an adult human have?",
+    "options": ["186", "206", "216", "226"],
+    "answer": 1
+  },
+  {
+    "id": 10,
+    "question": "What year did World War II end?",
+    "options": ["1943", "1944", "1945", "1946"],
+    "answer": 2
+  },
+  {
+    "id": 11,
+    "question": "Which gas do plants absorb from the atmosphere?",
+    "options": ["Oxygen", "Nitrogen", "Carbon Dioxide", "Hydrogen"],
+    "answer": 2
+  },
+  {
+    "id": 12,
+    "question": "What is the smallest prime number?",
+    "options": ["0", "1", "2", "3"],
+    "answer": 2
+  },
+  {
+    "id": 13,
+    "question": "Which ocean is the largest?",
+    "options": ["Atlantic", "Indian", "Arctic", "Pacific"],
+    "answer": 3
+  },
+  {
+    "id": 14,
+    "question": "What is the powerhouse of the cell?",
+    "options": ["Nucleus", "Ribosome", "Mitochondria", "Golgi Body"],
+    "answer": 2
+  },
+  {
+    "id": 15,
+    "question": "Who painted the Mona Lisa?",
+    "options": ["Michelangelo", "Leonardo da Vinci", "Raphael", "Donatello"],
+    "answer": 1
+  }
+]
