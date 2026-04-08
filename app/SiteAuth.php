@@ -89,9 +89,9 @@ final class SiteAuth
         }
 
         if (!self::isAuthenticated()) {
-            $uri = $_SERVER['REQUEST_URI'] ?? '/index.php';
+            $uri = $_SERVER['REQUEST_URI'] ?? nikkquiz_path('index');
             $redir = self::safeRedirectPath($uri);
-            header('Location: login.php?redirect=' . rawurlencode($redir));
+            header('Location: login?redirect=' . rawurlencode($redir));
             exit;
         }
     }
@@ -104,13 +104,13 @@ final class SiteAuth
         $path = parse_url($uri, PHP_URL_PATH);
         $query = parse_url($uri, PHP_URL_QUERY);
         if (!is_string($path) || $path === '') {
-            return '/index.php';
+            return nikkquiz_path('index');
         }
         if ($path[0] !== '/') {
-            return '/index.php';
+            return nikkquiz_path('index');
         }
         if (strlen($path) >= 2 && $path[1] === '/') {
-            return '/index.php';
+            return nikkquiz_path('index');
         }
 
         $out = $path;
@@ -128,13 +128,13 @@ final class SiteAuth
     {
         $path = $param;
         if ($path === '') {
-            return '/index.php';
+            return nikkquiz_path('index');
         }
         if ($path[0] !== '/') {
-            return '/index.php';
+            return nikkquiz_path('index');
         }
         if (strlen($path) >= 2 && $path[1] === '/') {
-            return '/index.php';
+            return nikkquiz_path('index');
         }
 
         return $path;

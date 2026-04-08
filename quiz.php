@@ -26,7 +26,7 @@ SiteAuth::requirePage();
 </head>
 <body class="min-h-screen text-white">
     <div class="max-w-5xl mx-auto px-4 py-8">
-        <a href="batch.php?id=" id="backLink" class="text-sm text-gray-500 hover:text-gray-300 mb-6 inline-block">← Back to batch</a>
+        <a href="batch?id=" id="backLink" class="text-sm text-gray-500 hover:text-gray-300 mb-6 inline-block">← Back to batch</a>
 
         <div id="needAuth" class="hidden text-center py-16">
             <p class="text-gray-400 mb-4">Sign in to the batch first.</p>
@@ -67,7 +67,7 @@ SiteAuth::requirePage();
     </div>
 
     <script>
-    const API = 'api/handler.php';
+    const API = 'api/handler';
     const params = new URLSearchParams(window.location.search);
     const BATCH_ID = params.get('batch_id');
     const QUIZ_ID = params.get('id');
@@ -85,7 +85,7 @@ SiteAuth::requirePage();
             const resS = b[0];
             if (!resQ.success) {
                 $('#needAuth').removeClass('hidden');
-                $('#batchLink').attr('href', 'batch.php?id=' + encodeURIComponent(BATCH_ID));
+                $('#batchLink').attr('href', 'batch?id=' + encodeURIComponent(BATCH_ID));
                 return;
             }
             const q = resQ.quiz;
@@ -93,7 +93,7 @@ SiteAuth::requirePage();
             document.title = qi.name + ' — NikkQuiz';
             $('#quizTitle').text(qi.name);
             $('#quizMeta').text('Time limit: ' + qi.time_limit + ' min · Up to ' + qi.total_display_questions + ' questions shown per attempt · ' + (qi.status === 'active' ? 'Active' : 'Inactive'));
-            $('#backLink').attr('href', 'batch.php?id=' + encodeURIComponent(BATCH_ID));
+            $('#backLink').attr('href', 'batch?id=' + encodeURIComponent(BATCH_ID));
 
             if (resS.success && resS.stats) {
                 const s = resS.stats;
@@ -161,7 +161,7 @@ SiteAuth::requirePage();
 
     $(document).ready(function() {
         if (!BATCH_ID || !QUIZ_ID) {
-            window.location.href = 'index.php';
+            window.location.href = 'index';
             return;
         }
         loadPage();

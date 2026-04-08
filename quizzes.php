@@ -24,8 +24,8 @@
             <h1 class="text-3xl font-extrabold mb-2"><span class="gradient-text">Active quizzes</span></h1>
             <p class="text-gray-400 text-sm max-w-md mx-auto">Open a quiz and enter your class PIN. Only quizzes your teacher marked active are listed.</p>
             <p class="mt-4 flex flex-wrap justify-center gap-4">
-                <a href="my_stats.php" class="text-violet-400 hover:text-violet-300 text-sm font-medium">My quiz stats</a>
-                <a href="index.php" class="text-gray-500 hover:text-gray-300 text-sm">Teacher home</a>
+                <a href="my_stats" class="text-violet-400 hover:text-violet-300 text-sm font-medium">My quiz stats</a>
+                <a href="index" class="text-gray-500 hover:text-gray-300 text-sm">Teacher home</a>
             </p>
         </header>
         <div id="list" class="space-y-4">
@@ -34,7 +34,7 @@
         <div id="empty" class="hidden text-center py-12 text-gray-500 text-sm">No active quizzes.</div>
     </div>
     <script>
-    const API = 'api/handler.php';
+    const API = 'api/handler';
     function escapeHtml(s) {
         return $('<div>').text(s).html();
     }
@@ -49,7 +49,7 @@
             const base = window.location.pathname.replace(/[^/]*$/, '');
             let h = '';
             res.quizzes.forEach(function(q) {
-                const href = base + 'take_quiz.php?q=' + encodeURIComponent(q.public_slug);
+                const href = base + 'take_quiz?q=' + encodeURIComponent(q.public_slug);
                 const bn = q.batch_name ? '<span class="text-xs text-gray-500 block mb-1">' + escapeHtml(q.batch_name) + '</span>' : '';
                 h += '<a href="' + href + '" class="block glass-card rounded-2xl p-6 hover:border-violet-500/30 transition-colors">';
                 h += bn + '<div class="flex justify-between items-center gap-4">';

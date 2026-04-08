@@ -60,8 +60,14 @@ Teacher pages **do not run** until a site password is configured. Student quiz a
 ### 5. Open the app
 
 - **Apache (Laragon):** Open `http://localhost/nikkQuiz/` (adjust the path if your folder name differs).
-- You should be redirected to **`login.php`** until you sign in with the **site password**.
-- **Students** use **`take_quiz.php`**, **`quizzes.php`**, and **`my_stats.php`** with quiz links and PINs; those flows do not use the site password.
+- You should be redirected to **`login`** until you sign in with the **site password**.
+- **Students** use **`take_quiz`**, **`quizzes`**, and **`my_stats`** with quiz links and PINs; those flows do not use the site password.
+
+### Clean URLs (no `.php` in the address bar)
+
+Apache uses **`/.htaccess`** (`mod_rewrite`) so routes look like `/nikkQuiz/batch?id=…` instead of `batch.php`. Edit **`RewriteBase`** in `.htaccess` if your folder name is not `nikkQuiz` (default `RewriteBase /nikkQuiz/`). For an install at the domain root, use `RewriteBase /`.
+
+The PHP **built-in server** (`php -S`) does **not** apply `.htaccess`; use Laragon/Apache for extensionless URLs, or keep using `*.php` paths locally.
 
 ### 6. Optional: PHP built-in server (quick test)
 
@@ -71,7 +77,7 @@ From the **project root** (where `index.php` is):
 php -S localhost:8000
 ```
 
-Then open `http://localhost:8000/`. Use the same `config.local.php` steps as above.
+Then open `http://localhost:8000/`. Rewrites are not active; you may need `http://localhost:8000/index.php` unless you add a router script. Prefer Laragon for full URL behavior.
 
 ---
 
@@ -108,15 +114,19 @@ If `pdo_sqlite` is missing, SQLite will not work—enable it or ask your host.
 - Typical approach: directory **`data/`** mode **755** or **775** depending on host; the database file is created automatically.
 - If you see errors about writing to the database, try **775** on `data/` or ask the host which user Apache/PHP runs as.
 
-### 5. Protecting `data/` on Apache
+### 5. Apache rewrites (clean URLs)
+
+Ensure **AllowOverride** allows **`/.htaccess`** (often “All” in Apache config) so extensionless URLs work. If links show `404`, ask the host to enable **`mod_rewrite`**.
+
+### 6. Protecting `data/` on Apache
 
 The repo includes **`data/.htaccess`** so Apache **denies direct browser access** to `*.sqlite` and legacy `*.json` files. Keep that file when you deploy. If you use **nginx** only, block `/data/` in your server config instead (this file does not apply).
 
-### 6. HTTPS
+### 7. HTTPS
 
 - In cPanel, enable **SSL** (Let’s Encrypt or your certificate) and force **HTTPS** so teacher login and cookies are not sent in clear text.
 
-### 7. URL after install
+### 8. URL after install
 
 - If the app is in `public_html/nikkQuiz/`, the site URL is:
 
@@ -136,7 +146,7 @@ The repo includes **`data/.htaccess`** so Apache **denies direct browser access*
 
 **Merge order:** Defaults in `config/config.php` are overridden by **`config.local.php`** in the project root, then by **`config/config.local.php`** if present.
 
-Until **`site_password`** or **`site_password_hash`** is set, teacher-facing pages show a short setup message (HTTP **503**). Student URLs such as **`take_quiz.php`**, **`quizzes.php`**, and **`my_stats.php`** can still load, but you should **always** set the site password before sharing the install so only you can create batches and use teacher APIs.
+Until **`site_password`** or **`site_password_hash`** is set, teacher-facing pages show a short setup message (HTTP **503**). Student URLs such as **`take_quiz`**, **`quizzes`**, and **`my_stats`** can still load, but you should **always** set the site password before sharing the install so only you can create batches and use teacher APIs.
 
 ---
 
@@ -165,7 +175,8 @@ nikkQuiz/
 │   └── config.local.php.example
 ├── app/                       # Database, managers, auth, stats
 ├── assets/css, assets/js
-├── api/handler.php            # JSON API
+├── .htaccess                  # Apache: extensionless URLs → *.php
+├── api/handler.php            # JSON API (browser path: …/api/handler)
 ├── data/
 │   ├── .htaccess              # Deny web access to DB/JSON (Apache)
 │   └── nikkquiz.sqlite        # Created at runtime (gitignored)

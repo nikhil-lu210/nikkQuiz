@@ -1,5 +1,12 @@
 // Redirect to owner login when the API rejects a teacher-only action (expired site session).
 (function () {
+    function nikkquizLoginUrl() {
+        var path = window.location.pathname;
+        if (path.indexOf('/api/') !== -1) {
+            return path.replace(/\/api\/[^/]+$/, '') + '/login';
+        }
+        return 'login';
+    }
     if (typeof jQuery === 'undefined') return;
     jQuery(document).ajaxSuccess(function (event, xhr) {
         var ct = xhr.getResponseHeader('Content-Type') || '';
@@ -8,7 +15,7 @@
             var res = JSON.parse(xhr.responseText);
             if (res && res.needs_site_auth) {
                 var path = window.location.pathname + window.location.search;
-                window.location.assign('login.php?redirect=' + encodeURIComponent(path));
+                window.location.assign(nikkquizLoginUrl() + '?redirect=' + encodeURIComponent(path));
             }
         } catch (e) {}
     });

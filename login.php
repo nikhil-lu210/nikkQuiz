@@ -62,14 +62,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && SiteAuth::isConfigured()) {
                     <li>Set <code class="text-violet-300">site_password</code> (or <code class="text-violet-300">site_password_hash</code>) in that file.</li>
                     <li>Reload this page. Never commit <code class="text-violet-300">config.local.php</code>.</li>
                 </ol>
-                <p class="mt-4"><a href="quizzes.php" class="text-violet-400 hover:text-violet-300">Student: active quizzes</a></p>
+                <p class="mt-4"><a href="quizzes" class="text-violet-400 hover:text-violet-300">Student: active quizzes</a></p>
             </div>
         <?php else : ?>
             <div class="glass-card rounded-2xl p-8">
                 <?php if ($error !== '') : ?>
                     <p class="text-red-400 text-sm mb-4"><?php echo htmlspecialchars($error, ENT_QUOTES, 'UTF-8'); ?></p>
                 <?php endif; ?>
-                <form method="post" action="login.php" class="space-y-4">
+                <form method="post" action="login" class="space-y-4">
                     <input type="hidden" name="redirect" value="<?php echo htmlspecialchars($redirectField, ENT_QUOTES, 'UTF-8'); ?>">
                     <div>
                         <label class="block text-sm font-medium text-gray-300 mb-1">Site password</label>
@@ -77,7 +77,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && SiteAuth::isConfigured()) {
                     </div>
                     <button type="submit" class="btn-primary w-full text-white py-3 rounded-xl font-semibold text-sm">Sign in</button>
                 </form>
-                <p class="mt-6 text-center"><a href="quizzes.php" class="text-violet-400 hover:text-violet-300 text-sm">Student: active quizzes</a></p>
+                <p class="mt-6 text-center"><a href="quizzes" class="text-violet-400 hover:text-violet-300 text-sm">Student: active quizzes</a></p>
             </div>
         <?php endif; ?>
     </div>

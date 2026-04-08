@@ -28,7 +28,7 @@
 
     <div class="relative z-10 max-w-4xl mx-auto px-4 py-8">
         <div class="flex justify-between items-center mb-8">
-            <a href="quizzes.php" class="text-sm text-gray-500 hover:text-gray-300">← Active quizzes</a>
+            <a href="quizzes" class="text-sm text-gray-500 hover:text-gray-300">← Active quizzes</a>
             <button type="button" id="btnLogoutStudent" class="text-sm text-gray-500 hover:text-violet-300 hidden">Sign out</button>
         </div>
 
@@ -72,7 +72,7 @@
     </div>
 
     <script>
-    const API = 'api/handler.php';
+    const API = 'api/handler';
 
     function escapeHtml(s) {
         return $('<div>').text(s).html();

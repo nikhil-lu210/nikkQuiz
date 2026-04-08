@@ -49,7 +49,7 @@ SiteAuth::requirePage();
     </div>
 
     <script>
-    const API = 'api/handler.php';
+    const API = 'api/handler';
     const params = new URLSearchParams(window.location.search);
     const BATCH_ID = params.get('batch_id');
     const PARTICIPANT_ID = params.get('participant_id');
@@ -64,7 +64,7 @@ SiteAuth::requirePage();
             $('#needAuth p').text('Missing batch or participant.');
             return;
         }
-        $('#backLink').attr('href', 'batch.php?id=' + encodeURIComponent(BATCH_ID));
+        $('#backLink').attr('href', 'batch?id=' + encodeURIComponent(BATCH_ID));
 
         $.post(API, {
             action: 'participant_detail_teacher',
@@ -74,7 +74,7 @@ SiteAuth::requirePage();
             if (!res.success) {
                 $('#needAuth').removeClass('hidden');
                 $('#needAuth p').text(res.error || 'Could not load.');
-                $('#batchLink').attr('href', 'batch.php?id=' + encodeURIComponent(BATCH_ID));
+                $('#batchLink').attr('href', 'batch?id=' + encodeURIComponent(BATCH_ID));
                 return;
             }
 
@@ -186,7 +186,7 @@ SiteAuth::requirePage();
         }, 'json').fail(function() {
             $('#needAuth').removeClass('hidden');
             $('#needAuth p').text('Request failed.');
-            $('#batchLink').attr('href', 'batch.php?id=' + encodeURIComponent(BATCH_ID));
+            $('#batchLink').attr('href', 'batch?id=' + encodeURIComponent(BATCH_ID));
         });
     }
 

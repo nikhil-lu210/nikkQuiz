@@ -80,8 +80,8 @@ SiteAuth::requirePage();
             <h1 class="text-4xl font-extrabold mb-2"><span class="gradient-text">NikkQuiz</span></h1>
             <p class="text-gray-400 text-sm max-w-lg mx-auto">Create a batch for your class, then add participants and quizzes. Teachers sign in with their batch password.</p>
             <p class="mt-4 flex flex-wrap justify-center gap-4 items-center">
-                <a href="quizzes.php" class="text-violet-400 hover:text-violet-300 text-sm underline underline-offset-2">Student: browse active quizzes</a>
-                <a href="logout_site.php" class="text-gray-500 hover:text-gray-300 text-sm">Sign out site</a>
+                <a href="quizzes" class="text-violet-400 hover:text-violet-300 text-sm underline underline-offset-2">Student: browse active quizzes</a>
+                <a href="logout_site" class="text-gray-500 hover:text-gray-300 text-sm">Sign out site</a>
             </p>
         </header>
 
@@ -126,7 +126,7 @@ SiteAuth::requirePage();
     </div>
 
     <script>
-    const API = 'api/handler.php';
+    const API = 'api/handler';
 
     function escapeHtml(s) {
         return $('<div>').text(s).html();
@@ -155,7 +155,7 @@ SiteAuth::requirePage();
             });
             $('#batchList').html(html);
             $('#batchList').off('click', '.batch-card').on('click', '.batch-card', function() {
-                window.location.href = 'batch.php?id=' + $(this).data('id');
+                window.location.href = 'batch?id=' + $(this).data('id');
             });
         }, 'json');
     }
@@ -190,10 +190,10 @@ SiteAuth::requirePage();
             $.post(API, { action: 'login_batch', batch_id: batchId, teacher_password: pw }, function() {
                 $('#closeCreateModal').click();
                 $('#createBatchForm')[0].reset();
-                window.location.href = 'batch.php?id=' + batchId;
+                window.location.href = 'batch?id=' + batchId;
             }, 'json').fail(function() {
                 btn.prop('disabled', false).text('Create batch');
-                window.location.href = 'batch.php?id=' + batchId;
+                window.location.href = 'batch?id=' + batchId;
             });
         }, 'json');
     });

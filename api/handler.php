@@ -258,7 +258,7 @@ try {
 
             $quiz = $quizManager->createQuizForBatch($batchId, $name, $timeLimit, $totalDisplay, $normalized);
             $slug = $quiz['quiz_info']['public_slug'];
-            $link = json_public_base_url() . '/take_quiz.php?q=' . rawurlencode($slug);
+            $link = json_public_base_url() . '/take_quiz?q=' . rawurlencode($slug);
             $qi = $quiz['quiz_info'];
             unset($qi['batch_id']);
             echo json_encode([

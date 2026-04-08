@@ -90,7 +90,7 @@ $exportBatchId = isset($_GET['id']) ? (string) $_GET['id'] : '';
                 <div id="loginError" class="text-red-600 text-sm hidden"></div>
                 <button type="submit" class="bp-btn bp-btn-primary w-full py-2.5">Enter batch</button>
             </form>
-            <p class="mt-6 text-center"><a href="index.php" class="bp-muted text-sm hover:text-indigo-600">← All batches</a></p>
+            <p class="mt-6 text-center"><a href="index" class="bp-muted text-sm hover:text-indigo-600">← All batches</a></p>
         </div>
     </div>
 
@@ -98,7 +98,7 @@ $exportBatchId = isset($_GET['id']) ? (string) $_GET['id'] : '';
     <div id="screenDash" class="relative z-10 max-w-5xl mx-auto px-4 sm:px-6 py-8 hidden">
         <div class="flex flex-col lg:flex-row lg:items-start justify-between gap-8 mb-10 fade-in">
             <div class="flex-1 min-w-0">
-                <a href="index.php" class="text-sm bp-muted hover:text-indigo-600 mb-2 inline-block">← Batches</a>
+                <a href="index" class="text-sm bp-muted hover:text-indigo-600 mb-2 inline-block">← Batches</a>
                 <h1 class="text-2xl sm:text-3xl font-bold bp-heading" id="dashTitle">…</h1>
                 <p class="bp-muted text-sm mt-1" id="dashSub"></p>
             </div>
@@ -159,7 +159,7 @@ $exportBatchId = isset($_GET['id']) ? (string) $_GET['id'] : '';
                 </div>
                 <div class="flex flex-wrap gap-2 shrink-0">
                     <?php if ($exportBatchId !== '') : ?>
-                    <a href="export_participants.php?batch_id=<?php echo rawurlencode($exportBatchId); ?>" class="bp-btn bp-btn-secondary px-4 py-2 text-sm inline-flex items-center gap-2">
+                    <a href="export_participants?batch_id=<?php echo rawurlencode($exportBatchId); ?>" class="bp-btn bp-btn-secondary px-4 py-2 text-sm inline-flex items-center gap-2">
                         <svg class="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
                         Export
                     </a>
@@ -191,7 +191,7 @@ $exportBatchId = isset($_GET['id']) ? (string) $_GET['id'] : '';
             <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-4">
                 <p class="bp-muted text-sm flex-1 max-w-2xl">Rows are ordered by <span class="text-slate-700 font-medium">rank</span> (higher average % first; ties by shorter total time on completed quizzes). Scroll sideways on small screens. <span class="text-slate-700 font-medium">Click a row</span> for detail.</p>
                 <?php if ($exportBatchId !== '') : ?>
-                <a href="export_batch_stats.php?batch_id=<?php echo rawurlencode($exportBatchId); ?>" class="bp-btn bp-btn-secondary px-4 py-2 text-sm whitespace-nowrap shrink-0">Export results (Excel)</a>
+                <a href="export_batch_stats?batch_id=<?php echo rawurlencode($exportBatchId); ?>" class="bp-btn bp-btn-secondary px-4 py-2 text-sm whitespace-nowrap shrink-0">Export results (Excel)</a>
                 <?php endif; ?>
             </div>
             <div id="statsRollups" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mb-6"></div>
@@ -207,8 +207,8 @@ $exportBatchId = isset($_GET['id']) ? (string) $_GET['id'] : '';
         </div>
 
         <div class="flex flex-wrap gap-2 justify-end mt-6">
-            <a href="quizzes.php" class="bp-btn bp-btn-secondary px-4 py-2 text-sm">Student quiz list</a>
-            <a href="my_stats.php" class="bp-btn bp-btn-secondary px-4 py-2 text-sm">Student: my stats</a>
+            <a href="quizzes" class="bp-btn bp-btn-secondary px-4 py-2 text-sm">Student quiz list</a>
+            <a href="my_stats" class="bp-btn bp-btn-secondary px-4 py-2 text-sm">Student: my stats</a>
             <button type="button" id="btnLogout" class="bp-btn bp-btn-secondary px-4 py-2 text-sm">Sign out</button>
         </div>
     </div>
@@ -272,7 +272,7 @@ $exportBatchId = isset($_GET['id']) ? (string) $_GET['id'] : '';
     </div>
 
     <script>
-    const API = 'api/handler.php';
+    const API = 'api/handler';
     const BATCH_ID = new URLSearchParams(window.location.search).get('id');
     let batchPayload = null;
     let batchStatsCache = null;
@@ -347,7 +347,7 @@ $exportBatchId = isset($_GET['id']) ? (string) $_GET['id'] : '';
             const base = window.location.origin + window.location.pathname.replace(/[^/]*$/, '');
             let h = '';
             quizzes.forEach(q => {
-                const link = base + 'take_quiz.php?q=' + encodeURIComponent(q.public_slug);
+                const link = base + 'take_quiz?q=' + encodeURIComponent(q.public_slug);
                 const st = (q.status || 'active') === 'active';
                 const badgeActive = st
                     ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
@@ -433,7 +433,7 @@ $exportBatchId = isset($_GET['id']) ? (string) $_GET['id'] : '';
                                 </select>
                             </div>
                             <div class="flex flex-wrap items-center gap-2 sm:gap-3">
-                                <a href="quiz.php?batch_id=${encodeURIComponent(BATCH_ID)}&id=${encodeURIComponent(q.id)}" class="bp-btn bp-btn-secondary px-4 py-2 text-sm inline-flex items-center gap-2">
+                                <a href="quiz?batch_id=${encodeURIComponent(BATCH_ID)}&id=${encodeURIComponent(q.id)}" class="bp-btn bp-btn-secondary px-4 py-2 text-sm inline-flex items-center gap-2">
                                     <svg class="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
                                     View results
                                 </a>
@@ -463,7 +463,7 @@ $exportBatchId = isset($_GET['id']) ? (string) $_GET['id'] : '';
                 $('#screenLogin').removeClass('hidden');
             } else {
                 toast(res.error || 'Error', true);
-                setTimeout(() => location.href = 'index.php', 2000);
+                setTimeout(() => location.href = 'index', 2000);
             }
         }, 'json');
     }
@@ -545,7 +545,7 @@ $exportBatchId = isset($_GET['id']) ? (string) $_GET['id'] : '';
         $('#statsMatrixInner').off('click', 'tr[data-participant-id]').on('click', 'tr[data-participant-id]', function() {
             const pid = $(this).attr('data-participant-id');
             if (pid) {
-                window.location.href = 'participant_detail.php?batch_id=' + encodeURIComponent(BATCH_ID) + '&participant_id=' + encodeURIComponent(pid);
+                window.location.href = 'participant_detail?batch_id=' + encodeURIComponent(BATCH_ID) + '&participant_id=' + encodeURIComponent(pid);
             }
         });
         $('#statsMatrixInner').off('keydown', 'tr[data-participant-id]').on('keydown', 'tr[data-participant-id]', function(e) {
@@ -553,7 +553,7 @@ $exportBatchId = isset($_GET['id']) ? (string) $_GET['id'] : '';
                 e.preventDefault();
                 const pid = $(this).attr('data-participant-id');
                 if (pid) {
-                    window.location.href = 'participant_detail.php?batch_id=' + encodeURIComponent(BATCH_ID) + '&participant_id=' + encodeURIComponent(pid);
+                    window.location.href = 'participant_detail?batch_id=' + encodeURIComponent(BATCH_ID) + '&participant_id=' + encodeURIComponent(pid);
                 }
             }
         });
@@ -745,20 +745,20 @@ $exportBatchId = isset($_GET['id']) ? (string) $_GET['id'] : '';
     $('#btnDeleteBatch').click(function() {
         if (!confirm('Delete this entire batch and all quizzes?')) return;
         $.post(API, { action: 'delete_batch', batch_id: BATCH_ID }, function(res) {
-            if (res.success) location.href = 'index.php';
+            if (res.success) location.href = 'index';
             else toast(res.error, true);
         }, 'json');
     });
 
     $(document).ready(function() {
         if (!BATCH_ID) {
-            location.href = 'index.php';
+            location.href = 'index';
             return;
         }
         $.post(API, { action: 'batch_meta', batch_id: BATCH_ID }, function(m) {
             if (!m.success) {
                 toast('Batch not found', true);
-                setTimeout(() => location.href = 'index.php', 2000);
+                setTimeout(() => location.href = 'index', 2000);
                 return;
             }
             document.title = m.name + ' — NikkQuiz';
