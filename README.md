@@ -65,7 +65,7 @@ Teacher pages **do not run** until a site password is configured. Student quiz a
 
 ### Clean URLs (no `.php` in the address bar)
 
-Apache uses **`/.htaccess`** (`mod_rewrite`) so routes look like `/nikkQuiz/batch?id=…` instead of `batch.php`. Edit **`RewriteBase`** in `.htaccess` if your folder name is not `nikkQuiz` (default `RewriteBase /nikkQuiz/`). For an install at the domain root, use `RewriteBase /`.
+Apache uses **`/.htaccess`** (`mod_rewrite`) so routes look like `/nikkQuiz/batch?id=…` instead of `batch.php`. The repo **does not set `RewriteBase`**, so the same file works when the app is under a path (e.g. `/nikkQuiz/`) or at a subdomain document root. If your host requires an explicit base, add **`RewriteBase`** to match your public URL path (e.g. **`RewriteBase /`** at the domain root).
 
 The PHP **built-in server** (`php -S`) does **not** apply `.htaccess`; use Laragon/Apache for extensionless URLs, or keep using `*.php` paths locally.
 

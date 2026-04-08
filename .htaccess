@@ -1,16 +1,12 @@
-# NikkQuiz — extensionless URLs (/batch → batch.php). Requires mod_rewrite + AllowOverride.
+# NikkQuiz — extensionless URLs (/login → login.php). Requires mod_rewrite + AllowOverride.
 #
-# RewriteBase must match the URL path to this folder (from the domain root), not the disk folder name
-# unless they happen to be the same. Change it when you deploy:
-#   https://example.com/              →  RewriteBase /
-#   https://example.com/nikkQuiz/       →  RewriteBase /nikkQuiz/
-#   https://quiz.example.com/ (vhost)   →  RewriteBase /
-#
-# Laragon default below; edit one line for production if your public URL path differs.
+# No RewriteBase: Apache uses the directory that contains this file, so the same rules work for
+#   http://localhost/nikkQuiz/…  and  https://quiz.example.com/…  (subdomain docroot = this folder).
+# If extensionless URLs break on your host, set RewriteBase to your public URL path, e.g.
+#   RewriteBase /nikkQuiz/   only when the site is served under /nikkQuiz/ on the domain.
 
 <IfModule mod_rewrite.c>
     RewriteEngine On
-    RewriteBase /nikkQuiz/
 
     RewriteCond %{REQUEST_FILENAME} !-f
     RewriteCond %{REQUEST_FILENAME} !-d
