@@ -151,3 +151,15 @@ body.light-mode .theme-toggle {
     border-color: #cbd5e1;
     color: #0f172a;
 }
+
+/* ─── Batch workspace (batch.php): flat minimal UI (fixed light shell) ─── */
+body.batch-page {
+    background: #f8fafc !important;
+    color: #0f172a !important;
+}
+body.batch-page .theme-toggle {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    color: #475569;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
+}

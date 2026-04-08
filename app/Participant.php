@@ -77,6 +77,29 @@ class Participant
         return $this->batchManager->saveBatch($batchId, $data);
     }
 
+    public function updateParticipantName(string $batchId, string $participantId, string $name): bool
+    {
+        $name = trim($name);
+        if ($name === '') {
+            return false;
+        }
+        $data = $this->batchManager->loadBatch($batchId);
+        if (!$data) {
+            return false;
+        }
+        $found = false;
+        foreach ($data['participants'] as &$p) {
+            if (($p['id'] ?? '') === $participantId) {
+                $p['name'] = $name;
+                $found = true;
+                break;
+            }
+        }
+        unset($p);
+
+        return $found && $this->batchManager->saveBatch($batchId, $data);
+    }
+
     public function findParticipantByPin(string $pin): ?array
     {
         if (!preg_match('/^\d{6}$/', $pin)) {

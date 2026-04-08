@@ -207,6 +207,25 @@ try {
             }
             break;
 
+        case 'update_batch_participant_name':
+            $batchId = $_POST['batch_id'] ?? '';
+            $participantId = $_POST['participant_id'] ?? '';
+            $name = trim($_POST['name'] ?? '');
+            if ($batchId === '' || !require_teacher_batch($batchId)) {
+                echo json_encode(['success' => false, 'error' => 'Unauthorized.']);
+                exit;
+            }
+            if ($participantId === '' || $name === '') {
+                echo json_encode(['success' => false, 'error' => 'Participant and name are required.']);
+                exit;
+            }
+            if ($participant->updateParticipantName($batchId, $participantId, $name)) {
+                echo json_encode(['success' => true]);
+            } else {
+                echo json_encode(['success' => false, 'error' => 'Could not update name.']);
+            }
+            break;
+
         case 'create_quiz_in_batch':
             $batchId = $_POST['batch_id'] ?? '';
             $name = trim($_POST['name'] ?? '');

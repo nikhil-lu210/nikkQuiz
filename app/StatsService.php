@@ -171,6 +171,58 @@ class StatsService
     }
 
     /**
+     * Order by average % (higher first), tie-break by total time on finished quizzes (lower / faster first).
+     * Assign competition ranks (e.g. 1, 1, 3). No completed quiz → rank null.
+     *
+     * @param list<array<string, mixed>> $matrix
+     * @return list<array<string, mixed>>
+     */
+    private function assignBatchMatrixRanks(array $matrix): array
+    {
+        usort($matrix, static function (array $a, array $b): int {
+            $avgA = $a['avg_percentage'] ?? null;
+            $avgB = $b['avg_percentage'] ?? null;
+            if ($avgA === null && $avgB === null) {
+                return strcmp((string) ($a['participant_id'] ?? ''), (string) ($b['participant_id'] ?? ''));
+            }
+            if ($avgA === null) {
+                return 1;
+            }
+            if ($avgB === null) {
+                return -1;
+            }
+            if ($avgA !== $avgB) {
+                return $avgB <=> $avgA;
+            }
+            $ta = (int) ($a['total_time_seconds'] ?? 0);
+            $tb = (int) ($b['total_time_seconds'] ?? 0);
+            if ($ta !== $tb) {
+                return $ta <=> $tb;
+            }
+
+            return strcmp((string) ($a['participant_id'] ?? ''), (string) ($b['participant_id'] ?? ''));
+        });
+
+        $n = count($matrix);
+        for ($i = 0; $i < $n; $i++) {
+            if ($matrix[$i]['avg_percentage'] === null) {
+                $matrix[$i]['rank'] = null;
+                continue;
+            }
+            if ($i > 0
+                && $matrix[$i]['avg_percentage'] === $matrix[$i - 1]['avg_percentage']
+                && (int) ($matrix[$i]['total_time_seconds'] ?? 0) === (int) ($matrix[$i - 1]['total_time_seconds'] ?? 0)
+            ) {
+                $matrix[$i]['rank'] = $matrix[$i - 1]['rank'];
+            } else {
+                $matrix[$i]['rank'] = $i + 1;
+            }
+        }
+
+        return $matrix;
+    }
+
+    /**
      * Teacher: full matrix participants × quizzes + per-quiz rollups.
      */
     public function getBatchStats(string $batchId): ?array
@@ -194,6 +246,7 @@ class StatsService
             ];
             $sumPct = 0;
             $nDone = 0;
+            $totalTimeSec = 0;
 
             foreach ($quizList as $qmeta) {
                 $data = $this->quizManager->loadQuiz($qmeta['id']);
@@ -217,6 +270,15 @@ class StatsService
                     $pct = $total > 0 ? (int)round(($marks / $total) * 100) : 0;
                     $sumPct += $pct;
                     $nDone++;
+                    $startT = $att['start_time'] ?? null;
+                    $endT = $att['end_time'] ?? null;
+                    if (is_string($startT) && $startT !== '' && is_string($endT) && $endT !== '') {
+                        $t1 = strtotime($startT);
+                        $t2 = strtotime($endT);
+                        if ($t1 !== false && $t2 !== false) {
+                            $totalTimeSec += max(0, $t2 - $t1);
+                        }
+                    }
                     $row['cells'][$qmeta['id']] = [
                         'key' => 'done',
                         'label' => $marks . '/' . $total,
@@ -244,8 +306,11 @@ class StatsService
             }
 
             $row['avg_percentage'] = $nDone > 0 ? (int)round($sumPct / $nDone) : null;
+            $row['total_time_seconds'] = $totalTimeSec;
             $matrix[] = $row;
         }
+
+        $matrix = $this->assignBatchMatrixRanks($matrix);
 
         $quizRollups = [];
         foreach ($quizList as $qmeta) {
@@ -580,7 +645,7 @@ class StatsService
         $lines[] = self::csvEscapeRow(['Participant results']);
         $quizzes = $stats['quizzes'] ?? [];
         $rows = $stats['rows'] ?? [];
-        $header = ['Student', 'Participant ID'];
+        $header = ['Rank', 'Student', 'Participant ID'];
         foreach ($quizzes as $q) {
             $header[] = $q['name'] ?? '';
         }
@@ -588,6 +653,7 @@ class StatsService
         $lines[] = self::csvEscapeRow($header);
         foreach ($rows as $row) {
             $out = [
+                isset($row['rank']) && $row['rank'] !== null ? (string) $row['rank'] : '',
                 $row['participant_name'] ?? '',
                 $row['participant_id'] ?? '',
             ];
