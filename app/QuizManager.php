@@ -21,15 +21,6 @@ class QuizManager
         return bin2hex(random_bytes(8));
     }
 
-    /** @deprecated */
-    public function getQuizFilePath(string $quizId): string
-    {
-        $cfg = require dirname(__DIR__) . '/config.php';
-        $path = $cfg['sqlite_path'] ?? (dirname(__DIR__) . '/data/nikkquiz.sqlite');
-
-        return $path . ':quiz:' . $quizId;
-    }
-
     public function isSlugTaken(string $slug, ?string $exceptQuizId = null): bool
     {
         if ($exceptQuizId !== null) {

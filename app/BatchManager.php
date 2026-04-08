@@ -16,15 +16,6 @@ class BatchManager
         return 'batch_' . bin2hex(random_bytes(6));
     }
 
-    /** @deprecated Kept for compatibility; data lives in SQLite. */
-    public function getBatchFilePath(string $batchId): string
-    {
-        $cfg = require dirname(__DIR__) . '/config.php';
-        $path = $cfg['sqlite_path'] ?? (dirname(__DIR__) . '/data/nikkquiz.sqlite');
-
-        return $path . ':' . $batchId;
-    }
-
     /**
      * Legacy batches: add teacher fields and default password "changeme".
      *
