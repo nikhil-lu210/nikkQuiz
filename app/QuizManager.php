@@ -540,4 +540,132 @@ class QuizManager
 
         return $out;
     }
+
+    /**
+     * @param array<string, mixed> $question Single question (id, question, options, answer or correct)
+     * @return true|string true on success, error message on failure
+     */
+    public function updateQuizQuestionAtPoolIndex(string $quizId, int $poolIndex, array $question): bool|string
+    {
+        $data = $this->loadQuiz($quizId, false);
+        if (!$data) {
+            return 'Quiz not found.';
+        }
+        $questions = array_values($data['questions'] ?? []);
+        if ($poolIndex < 0 || $poolIndex >= count($questions)) {
+            return 'Invalid question index.';
+        }
+        $normalized = $this->validateAndNormalizeQuestions([$question]);
+        if ($normalized === null) {
+            return 'Invalid question: need text, at least two options, and a valid correct answer.';
+        }
+        $questions[$poolIndex] = $normalized[0];
+        $data['questions'] = $questions;
+
+        return $this->saveQuiz($quizId, $data) ? true : 'Could not save.';
+    }
+
+    /**
+     * Appends one MCQ to the pool. Assigns the next available question `id` (ref id).
+     *
+     * @param array<string, mixed> $question question text, options, answer (or correct); id optional
+     * @return true|string true on success, error message on failure
+     */
+    public function addQuizQuestionToPool(string $quizId, array $question): bool|string
+    {
+        $data = $this->loadQuiz($quizId, false);
+        if (!$data) {
+            return 'Quiz not found.';
+        }
+        $questions = array_values($data['questions'] ?? []);
+        $question['id'] = $this->nextQuestionRefId($questions);
+        $normalized = $this->validateAndNormalizeQuestions([$question]);
+        if ($normalized === null) {
+            return 'Invalid question: need text, at least two options, and a valid correct answer.';
+        }
+        $questions[] = $normalized[0];
+        $data['questions'] = $questions;
+
+        return $this->saveQuiz($quizId, $data) ? true : 'Could not save.';
+    }
+
+    /**
+     * @param array<int, array<string, mixed>> $questions
+     */
+    private function nextQuestionRefId(array $questions): int
+    {
+        $max = 0;
+        foreach ($questions as $q) {
+            $id = isset($q['id']) ? (int) $q['id'] : 0;
+            if ($id > $max) {
+                $max = $id;
+            }
+        }
+
+        return $max + 1;
+    }
+
+    /**
+     * Deletes one pool question and reindexes attempts that reference pool indices.
+     *
+     * @return true|string true on success, error message on failure
+     */
+    public function deleteQuizQuestionAtPoolIndex(string $quizId, int $poolIndex): bool|string
+    {
+        $data = $this->loadQuiz($quizId, false);
+        if (!$data) {
+            return 'Quiz not found.';
+        }
+        $totalDisplay = (int) ($data['quiz_info']['total_display_questions'] ?? 0);
+        $questions = array_values($data['questions'] ?? []);
+        $n = count($questions);
+        if ($poolIndex < 0 || $poolIndex >= $n) {
+            return 'Invalid question index.';
+        }
+        if ($n - 1 < $totalDisplay) {
+            return 'Cannot delete: the pool must stay at least as large as the “questions per attempt” limit (' . $totalDisplay . ').';
+        }
+        array_splice($questions, $poolIndex, 1);
+        $data['questions'] = array_values($questions);
+        $data['attempts'] = self::remapAttemptsAfterPoolDelete($data['attempts'] ?? [], $poolIndex);
+
+        return $this->saveQuiz($quizId, $data) ? true : 'Could not save.';
+    }
+
+    /**
+     * @param list<array<string, mixed>> $attempts
+     * @return list<array<string, mixed>>
+     */
+    private static function remapAttemptsAfterPoolDelete(array $attempts, int $deletedIndex): array
+    {
+        $out = [];
+        foreach ($attempts as $att) {
+            $assigned = [];
+            foreach ($att['assigned_questions'] ?? [] as $pi) {
+                $pi = (int) $pi;
+                if ($pi === $deletedIndex) {
+                    continue;
+                }
+                $assigned[] = $pi > $deletedIndex ? $pi - 1 : $pi;
+            }
+            $assigned = array_values(array_unique($assigned));
+            sort($assigned, SORT_NUMERIC);
+            $answers = [];
+            foreach ($att['answers'] ?? [] as $ans) {
+                $qi = (int) ($ans['question_index'] ?? 0);
+                if ($qi === $deletedIndex) {
+                    continue;
+                }
+                $answers[] = [
+                    'question_index' => $qi > $deletedIndex ? $qi - 1 : $qi,
+                    'selected' => (int) ($ans['selected'] ?? 0),
+                ];
+            }
+            $att['assigned_questions'] = $assigned;
+            $att['answers'] = $answers;
+            $out[] = $att;
+        }
+
+        return $out;
+    }
 }

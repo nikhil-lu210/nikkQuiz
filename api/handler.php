@@ -339,6 +339,88 @@ try {
             }
             break;
 
+        case 'update_quiz_question':
+            $batchId = $_POST['batch_id'] ?? '';
+            $quizId = $_POST['quiz_id'] ?? '';
+            $poolIndex = (int) ($_POST['pool_index'] ?? -1);
+            $rawQuestion = $_POST['question'] ?? '';
+            if ($batchId === '' || $quizId === '' || !require_teacher_batch($batchId)) {
+                echo json_encode(['success' => false, 'error' => 'Unauthorized.']);
+                exit;
+            }
+            $data = $quizManager->loadQuiz($quizId);
+            if (!$data || ($data['quiz_info']['batch_id'] ?? '') !== $batchId) {
+                echo json_encode(['success' => false, 'error' => 'Quiz not found.']);
+                exit;
+            }
+            if (!is_string($rawQuestion) || $rawQuestion === '') {
+                echo json_encode(['success' => false, 'error' => 'Question payload required.']);
+                exit;
+            }
+            $question = json_decode($rawQuestion, true);
+            if (!is_array($question)) {
+                echo json_encode(['success' => false, 'error' => 'Invalid question JSON.']);
+                exit;
+            }
+            $result = $quizManager->updateQuizQuestionAtPoolIndex($quizId, $poolIndex, $question);
+            if ($result === true) {
+                echo json_encode(['success' => true]);
+            } else {
+                echo json_encode(['success' => false, 'error' => is_string($result) ? $result : 'Update failed.']);
+            }
+            break;
+
+        case 'add_quiz_question':
+            $batchId = $_POST['batch_id'] ?? '';
+            $quizId = $_POST['quiz_id'] ?? '';
+            $rawQuestion = $_POST['question'] ?? '';
+            if ($batchId === '' || $quizId === '' || !require_teacher_batch($batchId)) {
+                echo json_encode(['success' => false, 'error' => 'Unauthorized.']);
+                exit;
+            }
+            $data = $quizManager->loadQuiz($quizId);
+            if (!$data || ($data['quiz_info']['batch_id'] ?? '') !== $batchId) {
+                echo json_encode(['success' => false, 'error' => 'Quiz not found.']);
+                exit;
+            }
+            if (!is_string($rawQuestion) || $rawQuestion === '') {
+                echo json_encode(['success' => false, 'error' => 'Question payload required.']);
+                exit;
+            }
+            $question = json_decode($rawQuestion, true);
+            if (!is_array($question)) {
+                echo json_encode(['success' => false, 'error' => 'Invalid question JSON.']);
+                exit;
+            }
+            $result = $quizManager->addQuizQuestionToPool($quizId, $question);
+            if ($result === true) {
+                echo json_encode(['success' => true]);
+            } else {
+                echo json_encode(['success' => false, 'error' => is_string($result) ? $result : 'Add failed.']);
+            }
+            break;
+
+        case 'delete_quiz_question':
+            $batchId = $_POST['batch_id'] ?? '';
+            $quizId = $_POST['quiz_id'] ?? '';
+            $poolIndex = (int) ($_POST['pool_index'] ?? -1);
+            if ($batchId === '' || $quizId === '' || !require_teacher_batch($batchId)) {
+                echo json_encode(['success' => false, 'error' => 'Unauthorized.']);
+                exit;
+            }
+            $data = $quizManager->loadQuiz($quizId);
+            if (!$data || ($data['quiz_info']['batch_id'] ?? '') !== $batchId) {
+                echo json_encode(['success' => false, 'error' => 'Quiz not found.']);
+                exit;
+            }
+            $result = $quizManager->deleteQuizQuestionAtPoolIndex($quizId, $poolIndex);
+            if ($result === true) {
+                echo json_encode(['success' => true]);
+            } else {
+                echo json_encode(['success' => false, 'error' => is_string($result) ? $result : 'Delete failed.']);
+            }
+            break;
+
         case 'student_stats':
             $pin = preg_replace('/\D/', '', $_POST['pin'] ?? '');
             if (strlen($pin) === 6) {

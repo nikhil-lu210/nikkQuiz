@@ -433,6 +433,10 @@ $exportBatchId = isset($_GET['id']) ? (string) $_GET['id'] : '';
                                 </select>
                             </div>
                             <div class="flex flex-wrap items-center gap-2 sm:gap-3">
+                                <a href="quiz_questions?batch_id=${encodeURIComponent(BATCH_ID)}&id=${encodeURIComponent(q.id)}" class="bp-btn bp-btn-secondary px-4 py-2 text-sm inline-flex items-center gap-2">
+                                    <svg class="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h10M4 18h10"/></svg>
+                                    View questions
+                                </a>
                                 <a href="quiz?batch_id=${encodeURIComponent(BATCH_ID)}&id=${encodeURIComponent(q.id)}" class="bp-btn bp-btn-secondary px-4 py-2 text-sm inline-flex items-center gap-2">
                                     <svg class="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
                                     View results
