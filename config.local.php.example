@@ -1,0 +1,19 @@
+<?php
+
+declare(strict_types=1);
+
+/**
+ * Site-wide password (owner login) for teacher / admin pages.
+ *
+ * 1. Copy this file to: config.local.php
+ * 2. Set ONE of the options below (not both):
+ */
+
+return [
+    // Option A — plain password (simplest for personal use on your machine)
+    'site_password' => 'change-this-to-a-long-secret',
+
+    // Option B — bcrypt hash (recommended if you worry about the file being read)
+    // Generate once: php -r "echo password_hash('your-secret', PASSWORD_DEFAULT), PHP_EOL;"
+    // 'site_password_hash' => '$2y$10$...........................................................',
+];

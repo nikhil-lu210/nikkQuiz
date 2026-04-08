@@ -33,6 +33,7 @@ error_log
 .env
 .env.local
 .env.*.local
+config.local.php
 
 # === Misc ===
 .gemini/

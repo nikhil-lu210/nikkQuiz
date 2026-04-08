@@ -138,8 +138,9 @@
             <div class="inline-flex items-center justify-center w-16 h-16 rounded-2xl mb-6" style="background: linear-gradient(135deg, rgba(124,58,237,0.2), rgba(236,72,153,0.15));">
                 <svg class="w-8 h-8 text-violet-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
             </div>
-            <h1 class="text-2xl font-bold gradient-text mb-2">Enter Your PIN</h1>
-            <p class="text-gray-400 text-sm mb-8">Enter the 6-digit PIN provided by your instructor.</p>
+            <p class="text-xs text-violet-400 uppercase tracking-wider mb-2" id="pinQuizLabel">Quiz</p>
+            <h1 class="text-2xl font-bold gradient-text mb-2" id="pinQuizTitle">Enter your PIN</h1>
+            <p class="text-gray-400 text-sm mb-8">Use the PIN from your class batch. The timer starts after your PIN is verified.</p>
 
             <div class="flex justify-center gap-2 mb-6" id="pinContainer">
                 <input type="text" maxlength="1" class="pin-input" data-index="0" inputmode="numeric" pattern="[0-9]" autocomplete="off">
@@ -155,6 +156,7 @@
             <button id="btnVerifyPin" class="btn-primary w-full text-white py-3 rounded-xl font-semibold text-sm" disabled>
                 Verify & Start Quiz
             </button>
+            <p class="mt-6 text-center"><a href="my_stats.php" class="text-sm text-violet-400/90 hover:text-violet-300">View my stats across all quizzes</a></p>
         </div>
     </div>
 
@@ -248,22 +250,28 @@
             </div>
 
             <p class="text-gray-600 text-xs mt-6">Powered by NikkQuiz</p>
+            <p class="mt-6">
+                <a href="my_stats.php" class="inline-flex items-center gap-2 text-violet-400 hover:text-violet-300 text-sm font-medium">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+                    View all my quiz stats
+                </a>
+            </p>
         </div>
     </div>
 
     <!-- ═══════════════════════════════════════════ ERROR SCREEN ═══════ -->
     <div id="screenError" class="relative z-10 hidden min-h-screen items-center justify-center p-4">
-        <div class="text-center fade-in">
+        <div class="text-center fade-in max-w-md mx-auto px-4">
             <div class="text-6xl mb-4">🚫</div>
-            <h2 class="text-2xl font-bold text-white mb-2">Invalid Link</h2>
-            <p class="text-gray-400">This quiz link is invalid or has expired.</p>
+            <h2 class="text-2xl font-bold text-white mb-2" id="errorTitle">Unavailable</h2>
+            <p class="text-gray-400" id="errorMessage">This quiz link is invalid or not active.</p>
         </div>
     </div>
 
     <script>
     const API = 'api/handler.php';
     const params = new URLSearchParams(window.location.search);
-    const UID = params.get('uid');
+    const QUIZ_SLUG = params.get('q');
 
     let quizId = null;
     let questions = [];
@@ -274,12 +282,35 @@
 
     // ─── Initialization ──────────────────────────────────────────────
     $(document).ready(function() {
-        if (!UID) {
+        if (!QUIZ_SLUG) {
+            $('#errorTitle').text('Invalid link');
+            $('#errorMessage').text('Missing quiz link. Ask your teacher for the correct URL.');
             showScreen('error');
             return;
         }
-        showScreen('pin');
-        setupPinInputs();
+        $.post(API, { action: 'get_quiz_public', quiz_slug: QUIZ_SLUG }, function(res) {
+            if (res.success && res.quiz) {
+                if (res.quiz.status !== 'active') {
+                    $('#errorTitle').text('Quiz not active');
+                    $('#errorMessage').text('This quiz is not accepting attempts right now.');
+                    showScreen('error');
+                    return;
+                }
+                $('#pinQuizTitle').text(res.quiz.name);
+                document.title = res.quiz.name + ' — NikkQuiz';
+            } else {
+                $('#errorTitle').text('Invalid link');
+                $('#errorMessage').text('This quiz could not be found.');
+                showScreen('error');
+                return;
+            }
+            showScreen('pin');
+            setupPinInputs();
+        }, 'json').fail(function() {
+            $('#errorTitle').text('Error');
+            $('#errorMessage').text('Could not load quiz.');
+            showScreen('error');
+        });
     });
 
     function showScreen(name) {
@@ -341,7 +372,7 @@
         btn.prop('disabled', true).text('Verifying...');
         $('#pinError').addClass('hidden');
 
-        $.post(API, { action: 'verify_pin', token: UID, pin: pin }, function(res) {
+        $.post(API, { action: 'verify_pin', quiz_slug: QUIZ_SLUG, pin: pin }, function(res) {
             if (res.success) {
                 quizId = res.quiz_id;
                 startQuiz();
@@ -412,7 +443,8 @@
         const q = questions[idx];
 
         let optsHtml = '';
-        q.options.forEach((opt, oi) => {
+        const opts = Array.isArray(q.options) ? q.options : Object.values(q.options || {});
+        opts.forEach((opt, oi) => {
             const selected = answers[idx] === oi ? 'selected' : '';
             optsHtml += `
             <button class="option-btn ${selected} w-full flex items-center gap-4 px-5 py-4 rounded-xl text-left" onclick="selectOption(${idx}, ${oi})">

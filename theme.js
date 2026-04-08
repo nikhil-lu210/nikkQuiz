@@ -1,3 +1,19 @@
+// Redirect to owner login when the API rejects a teacher-only action (expired site session).
+(function () {
+    if (typeof jQuery === 'undefined') return;
+    jQuery(document).ajaxSuccess(function (event, xhr) {
+        var ct = xhr.getResponseHeader('Content-Type') || '';
+        if (ct.indexOf('application/json') === -1) return;
+        try {
+            var res = JSON.parse(xhr.responseText);
+            if (res && res.needs_site_auth) {
+                var path = window.location.pathname + window.location.search;
+                window.location.assign('login.php?redirect=' + encodeURIComponent(path));
+            }
+        } catch (e) {}
+    });
+})();
+
 // Add toggle button to DOM when ready
 document.addEventListener('DOMContentLoaded', () => {
     // Check local storage for theme preference

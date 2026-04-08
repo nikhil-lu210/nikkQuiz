@@ -1,59 +1,34 @@
 <?php
 /**
- * Full test setup: Creates a quiz, uploads questions, adds a participant.
+ * Dev smoke test: batch + participants + quiz with questions.
  * Run: php test_setup.php
  */
 require_once __DIR__ . '/classes/QuizManager.php';
+require_once __DIR__ . '/classes/BatchManager.php';
 require_once __DIR__ . '/classes/Participant.php';
 
 $qm = new QuizManager();
+$bm = new BatchManager();
 $pm = new Participant();
 
-// Create quiz
-echo "=== Creating Quiz ===\n";
-$quiz = $qm->createQuiz('Science Quiz', 2, 3, 'test123');
-$quizId = $quiz['quiz_info']['id'];
-echo "Created: {$quiz['quiz_info']['name']} (ID: $quizId)\n";
+echo "=== Batch ===\n";
+$batch = $bm->createBatch('Demo batch', 'Demo Teacher', 'teacher123');
+$bid = $batch['batch_info']['id'];
+echo "Created $bid\n";
 
-// Upload questions
-echo "\n=== Uploading Questions ===\n";
-$questions = json_decode(file_get_contents(__DIR__ . '/sample_questions.json'), true);
-if ($qm->uploadQuestions($quizId, $questions)) {
-    echo "Uploaded " . count($questions) . " questions.\n";
-} else {
-    echo "FAILED to upload questions.\n";
+echo "=== Participants ===\n";
+foreach (['Alice', 'Bob'] as $n) {
+    $p = $pm->addParticipant($bid, $n);
+    echo "$n → PIN {$p['pin']}\n";
 }
 
-// Add participants (name only — ID is auto-generated)
-echo "\n=== Adding Participants ===\n";
-$participants = ['Alice Johnson', 'Bob Smith', 'Carol Davis'];
-foreach ($participants as $name) {
-    $result = $pm->addParticipant($quizId, $name);
-    if ($result) {
-        echo "  ✓ {$name}\n";
-        echo "    ID:    {$result['id']}\n";
-        echo "    PIN:   {$result['pin']}\n";
-        echo "    Link:  http://localhost/nikkQuiz/take_quiz.php?uid={$result['token']}\n\n";
-    } else {
-        echo "  ✗ FAILED to add {$name}\n";
-    }
-}
+echo "=== Quiz ===\n";
+$qs = json_decode(file_get_contents(__DIR__ . '/sample_questions.json'), true);
+$norm = $qm->validateAndNormalizeQuestions($qs);
+$quiz = $qm->createQuizForBatch($bid, 'Sample quiz', 30, 5, $norm);
+$slug = $quiz['quiz_info']['public_slug'];
+echo "Quiz {$quiz['quiz_info']['id']} slug=$slug\n";
 
-// Verify data integrity
-echo "=== Verifying Quiz Data ===\n";
-$data = $qm->loadQuiz($quizId);
-echo "Quiz name:     {$data['quiz_info']['name']}\n";
-echo "Time limit:    {$data['quiz_info']['time_limit']} min\n";
-echo "Display Q's:   {$data['quiz_info']['total_display_questions']}\n";
-echo "Questions:     " . count($data['questions']) . "\n";
-echo "Participants:  " . count($data['participants']) . "\n";
-
-// Verify password hashing
-echo "\n=== Security Check ===\n";
-echo "Password hash stored: " . (str_starts_with($data['quiz_info']['admin_password'], '$2y$') ? 'YES (bcrypt)' : 'NO - ERROR') . "\n";
-echo "Password verify test: " . ($qm->verifyAdminPassword($quizId, 'test123') ? 'PASS' : 'FAIL') . "\n";
-echo "Wrong password test:  " . (!$qm->verifyAdminPassword($quizId, 'wrong') ? 'PASS (correctly rejected)' : 'FAIL') . "\n";
-
-echo "\n=== All Tests Complete ===\n";
-echo "Admin URL: http://localhost/nikkQuiz/quiz_details.php?id=$quizId\n";
-echo "Admin Password: test123\n";
+echo "\nBatch URL:  http://localhost/nikkQuiz/batch.php?id=$bid\n";
+echo "Take quiz:  http://localhost/nikkQuiz/take_quiz.php?q=$slug\n";
+echo "Password:   teacher123\n";

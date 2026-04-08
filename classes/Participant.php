@@ -1,105 +1,97 @@
 <?php
 
 require_once __DIR__ . '/QuizManager.php';
+require_once __DIR__ . '/BatchManager.php';
 
 class Participant
 {
     private QuizManager $quizManager;
+    private BatchManager $batchManager;
 
     public function __construct()
     {
         $this->quizManager = new QuizManager();
+        $this->batchManager = new BatchManager();
     }
 
-    /**
-     * Generate a unique token for participant URL
-     */
-    private function generateToken(): string
+    private function generateUniquePin(): string
     {
-        return bin2hex(random_bytes(16));
+        do {
+            $pin = str_pad((string)random_int(100000, 999999), 6, '0', STR_PAD_LEFT);
+        } while ($this->batchManager->isPinTaken($pin));
+        return $pin;
     }
 
-    /**
-     * Generate a random 6-digit PIN
-     */
-    private function generatePin(): string
+    private function generateParticipantId(array $existing): string
     {
-        return str_pad((string)random_int(100000, 999999), 6, '0', STR_PAD_LEFT);
-    }
-
-    /**
-     * Generate a short unique participant ID (e.g., STU-A3F7K)
-     */
-    private function generateParticipantId(array $existingParticipants): string
-    {
-        $chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // No ambiguous chars (0/O, 1/I)
+        $chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
         do {
             $id = 'STU-';
             for ($i = 0; $i < 5; $i++) {
                 $id .= $chars[random_int(0, strlen($chars) - 1)];
             }
-            // Ensure uniqueness
             $exists = false;
-            foreach ($existingParticipants as $p) {
-                if ($p['id'] === $id) {
+            foreach ($existing as $p) {
+                if (($p['id'] ?? '') === $id) {
                     $exists = true;
                     break;
                 }
             }
         } while ($exists);
-
         return $id;
     }
 
-    /**
-     * Add a participant to a quiz
-     */
-    public function addParticipant(string $quizId, string $name): ?array
+    public function addParticipant(string $batchId, string $name): ?array
     {
-        $data = $this->quizManager->loadQuiz($quizId);
-        if (!$data) return null;
+        $data = $this->batchManager->loadBatch($batchId);
+        if (!$data) {
+            return null;
+        }
 
         $participantId = $this->generateParticipantId($data['participants']);
-
-        $token = $this->generateToken();
-        $pin = $this->generatePin();
+        $pin = $this->generateUniquePin();
 
         $participant = [
             'id' => $participantId,
-            'name' => $name,
-            'token' => $token,
+            'name' => trim($name),
             'pin' => $pin,
-            'marks' => 0,
-            'start_time' => null,
-            'end_time' => null,
-            'status' => 'pending',
-            'assigned_questions' => [],
-            'answers' => [],
         ];
 
         $data['participants'][] = $participant;
-        $this->quizManager->saveQuiz($quizId, $data);
+        $this->batchManager->saveBatch($batchId, $data);
 
         return $participant;
     }
 
-    /**
-     * Find participant by token across all quizzes
-     */
-    public function findByToken(string $token): ?array
+    public function removeParticipant(string $batchId, string $participantId): bool
     {
+        $data = $this->batchManager->loadBatch($batchId);
+        if (!$data) {
+            return false;
+        }
+        $data['participants'] = array_values(array_filter(
+            $data['participants'],
+            fn($p) => ($p['id'] ?? '') !== $participantId
+        ));
+        return $this->batchManager->saveBatch($batchId, $data);
+    }
+
+    public function findParticipantByPin(string $pin): ?array
+    {
+        if (!preg_match('/^\d{6}$/', $pin)) {
+            return null;
+        }
         $dataDir = __DIR__ . '/../data';
-        $files = glob($dataDir . '/quiz_*.json');
-
-        foreach ($files as $file) {
+        foreach (glob($dataDir . '/batch_*.json') as $file) {
             $data = json_decode(file_get_contents($file), true);
-            if (!$data) continue;
-
+            if (empty($data['participants'])) {
+                continue;
+            }
             foreach ($data['participants'] as $p) {
-                if ($p['token'] === $token) {
+                if (($p['pin'] ?? '') === $pin) {
                     return [
-                        'quiz_id' => $data['quiz_info']['id'],
-                        'quiz_data' => $data,
+                        'batch_id' => $data['batch_info']['id'],
+                        'batch_name' => $data['batch_info']['name'],
                         'participant' => $p,
                     ];
                 }
@@ -108,134 +100,174 @@ class Participant
         return null;
     }
 
-    /**
-     * Verify participant PIN
-     */
-    public function verifyPin(string $token, string $pin): ?array
+    private function findAttemptIndex(array $attempts, string $batchId, string $participantId): ?int
     {
-        $result = $this->findByToken($token);
-        if (!$result) return null;
+        foreach ($attempts as $i => $a) {
+            if (($a['batch_id'] ?? '') === $batchId && ($a['participant_id'] ?? '') === $participantId) {
+                return $i;
+            }
+        }
+        return null;
+    }
 
-        if ($result['participant']['pin'] !== $pin) {
+    public function startQuiz(string $quizId, string $batchId, string $participantId): ?array
+    {
+        $data = $this->quizManager->loadQuiz($quizId);
+        if (!$data) {
             return null;
         }
 
-        return $result;
+        if (($data['quiz_info']['batch_id'] ?? '') !== $batchId) {
+            return null;
+        }
+
+        if (($data['quiz_info']['status'] ?? '') !== 'active') {
+            return null;
+        }
+
+        $batch = $this->batchManager->loadBatch($batchId);
+        if (!$batch) {
+            return null;
+        }
+
+        $participantRow = null;
+        foreach ($batch['participants'] as $p) {
+            if (($p['id'] ?? '') === $participantId) {
+                $participantRow = $p;
+                break;
+            }
+        }
+        if (!$participantRow) {
+            return null;
+        }
+
+        if (!isset($data['attempts'])) {
+            $data['attempts'] = [];
+        }
+
+        $idx = $this->findAttemptIndex($data['attempts'], $batchId, $participantId);
+
+        if ($idx !== null) {
+            $att = &$data['attempts'][$idx];
+            if (($att['status'] ?? '') === 'finished') {
+                return null;
+            }
+            if (($att['status'] ?? '') === 'running') {
+                $this->quizManager->saveQuiz($quizId, $data);
+                return $this->buildStartResponse($data, $att, $participantRow['name']);
+            }
+        }
+
+        $totalQuestions = count($data['questions']);
+        $displayCount = min($data['quiz_info']['total_display_questions'], $totalQuestions);
+
+        $assigned = [];
+        if ($totalQuestions > 0 && $displayCount > 0) {
+            $indices = array_rand($data['questions'], $displayCount);
+            if (!is_array($indices)) {
+                $indices = [$indices];
+            }
+            shuffle($indices);
+            $assigned = array_values($indices);
+        }
+
+        $attempt = [
+            'batch_id' => $batchId,
+            'participant_id' => $participantId,
+            'participant_name' => $participantRow['name'],
+            'status' => 'running',
+            'assigned_questions' => $assigned,
+            'answers' => [],
+            'marks' => 0,
+            'start_time' => date('Y-m-d H:i:s'),
+            'end_time' => null,
+        ];
+
+        if ($idx !== null) {
+            $data['attempts'][$idx] = $attempt;
+        } else {
+            $data['attempts'][] = $attempt;
+        }
+
+        $this->quizManager->saveQuiz($quizId, $data);
+
+        return $this->buildStartResponse($data, $attempt, $participantRow['name']);
     }
 
-    /**
-     * Start the quiz for a participant
-     */
-    public function startQuiz(string $quizId, string $token): ?array
+    private function buildStartResponse(array $quizData, array $attempt, string $participantName): array
     {
-        $data = $this->quizManager->loadQuiz($quizId);
-        if (!$data) return null;
-
-        foreach ($data['participants'] as &$p) {
-            if ($p['token'] === $token) {
-                if ($p['status'] === 'finished') {
-                    return null; // Already finished
-                }
-
-                if ($p['status'] === 'pending') {
-                    $p['status'] = 'running';
-                    $p['start_time'] = date('Y-m-d H:i:s');
-
-                    // Assign random questions
-                    $totalQuestions = count($data['questions']);
-                    $displayCount = min($data['quiz_info']['total_display_questions'], $totalQuestions);
-
-                    if ($totalQuestions > 0 && $displayCount > 0) {
-                        $indices = array_rand($data['questions'], $displayCount);
-                        if (!is_array($indices)) $indices = [$indices];
-                        shuffle($indices); // Randomize order too
-                        $p['assigned_questions'] = array_values($indices);
-                    }
-                }
-
-                $this->quizManager->saveQuiz($quizId, $data);
-
-                // Build question set for the participant
-                $questions = [];
-                foreach ($p['assigned_questions'] as $idx) {
-                    if (isset($data['questions'][$idx])) {
-                        $q = $data['questions'][$idx];
-                        $questions[] = [
-                            'id' => $q['id'],
-                            'question' => $q['question'],
-                            'options' => $q['options'],
-                            'index' => $idx,
-                        ];
-                    }
-                }
-
-                $startTime = strtotime($p['start_time']);
-                $endTime = $startTime + ($data['quiz_info']['time_limit'] * 60);
-                $remainingSeconds = max(0, $endTime - time());
-
-                return [
-                    'questions' => $questions,
-                    'time_limit' => $data['quiz_info']['time_limit'],
-                    'remaining_seconds' => $remainingSeconds,
-                    'quiz_name' => $data['quiz_info']['name'],
-                    'participant_name' => $p['name'],
-                    'status' => $p['status'],
+        $questions = [];
+        foreach ($attempt['assigned_questions'] as $idx) {
+            if (isset($quizData['questions'][$idx])) {
+                $q = $quizData['questions'][$idx];
+                $questions[] = [
+                    'id' => $q['id'],
+                    'question' => $q['question'],
+                    'options' => $q['options'],
+                    'index' => $idx,
                 ];
             }
         }
-        return null;
+
+        $startTime = strtotime($attempt['start_time']);
+        $endTime = $startTime + ($quizData['quiz_info']['time_limit'] * 60);
+        $remainingSeconds = max(0, $endTime - time());
+
+        return [
+            'questions' => $questions,
+            'time_limit' => $quizData['quiz_info']['time_limit'],
+            'remaining_seconds' => $remainingSeconds,
+            'quiz_name' => $quizData['quiz_info']['name'],
+            'participant_name' => $participantName,
+            'status' => $attempt['status'],
+        ];
     }
 
-    /**
-     * Submit quiz answers
-     */
-    public function submitQuiz(string $quizId, string $token, array $answers): ?array
+    public function submitQuiz(string $quizId, string $batchId, string $participantId, array $answers): ?array
     {
         $data = $this->quizManager->loadQuiz($quizId);
-        if (!$data) return null;
+        if (!$data || empty($data['attempts'])) {
+            return null;
+        }
 
-        foreach ($data['participants'] as &$p) {
-            if ($p['token'] === $token) {
-                if ($p['status'] === 'finished') {
-                    // Return existing results
-                    return $this->getResults($p, $data);
+        $idx = $this->findAttemptIndex($data['attempts'], $batchId, $participantId);
+        if ($idx === null) {
+            return null;
+        }
+
+        $att = &$data['attempts'][$idx];
+
+        if (($att['status'] ?? '') === 'finished') {
+            return $this->getResults($att, $data);
+        }
+
+        $att['status'] = 'finished';
+        $att['end_time'] = date('Y-m-d H:i:s');
+        $att['answers'] = $answers;
+
+        $correct = 0;
+        $total = count($att['assigned_questions']);
+
+        foreach ($answers as $ans) {
+            $qIndex = (int)$ans['question_index'];
+            $selectedOption = (int)$ans['selected'];
+            if (isset($data['questions'][$qIndex])) {
+                if ($data['questions'][$qIndex]['answer'] === $selectedOption) {
+                    $correct++;
                 }
-
-                $p['status'] = 'finished';
-                $p['end_time'] = date('Y-m-d H:i:s');
-                $p['answers'] = $answers;
-
-                // Calculate score
-                $correct = 0;
-                $total = count($p['assigned_questions']);
-
-                foreach ($answers as $ans) {
-                    $qIndex = (int)$ans['question_index'];
-                    $selectedOption = (int)$ans['selected'];
-
-                    if (isset($data['questions'][$qIndex])) {
-                        if ($data['questions'][$qIndex]['answer'] === $selectedOption) {
-                            $correct++;
-                        }
-                    }
-                }
-
-                $p['marks'] = $correct;
-                $this->quizManager->saveQuiz($quizId, $data);
-
-                return $this->getResults($p, $data);
             }
         }
-        return null;
+
+        $att['marks'] = $correct;
+        $this->quizManager->saveQuiz($quizId, $data);
+
+        return $this->getResults($att, $data);
     }
 
-    /**
-     * Get formatted results
-     */
-    private function getResults(array $participant, array $quizData): array
+    private function getResults(array $attempt, array $quizData): array
     {
-        $total = count($participant['assigned_questions']);
-        $marks = $participant['marks'];
+        $total = count($attempt['assigned_questions']);
+        $marks = (int)($attempt['marks'] ?? 0);
         $percentage = $total > 0 ? round(($marks / $total) * 100) : 0;
 
         if ($percentage >= 80) {
@@ -256,50 +288,90 @@ class Participant
         }
 
         return [
-            'name' => $participant['name'],
-            'id' => $participant['id'],
+            'name' => $attempt['participant_name'] ?? '',
+            'id' => $attempt['participant_id'] ?? '',
             'marks' => $marks,
             'total' => $total,
             'percentage' => $percentage,
             'grade' => $grade,
             'emoji' => $emoji,
             'quiz_name' => $quizData['quiz_info']['name'],
-            'start_time' => $participant['start_time'],
-            'end_time' => $participant['end_time'],
+            'start_time' => $attempt['start_time'] ?? null,
+            'end_time' => $attempt['end_time'] ?? null,
         ];
     }
 
-    /**
-     * Remove a participant from a quiz
-     */
-    public function removeParticipant(string $quizId, string $token): bool
+    public function checkTimeExpired(string $quizId, string $batchId, string $participantId): bool
     {
         $data = $this->quizManager->loadQuiz($quizId);
-        if (!$data) return false;
-
-        $data['participants'] = array_values(array_filter(
-            $data['participants'],
-            fn($p) => $p['token'] !== $token
-        ));
-
-        return $this->quizManager->saveQuiz($quizId, $data);
+        if (!$data || empty($data['attempts'])) {
+            return true;
+        }
+        $idx = $this->findAttemptIndex($data['attempts'], $batchId, $participantId);
+        if ($idx === null) {
+            return true;
+        }
+        $att = $data['attempts'][$idx];
+        if (($att['status'] ?? '') !== 'running') {
+            return false;
+        }
+        $startTime = strtotime($att['start_time']);
+        $endTime = $startTime + ($data['quiz_info']['time_limit'] * 60);
+        return time() > $endTime;
     }
 
     /**
-     * Check if time has expired for a running participant
+     * PIN must belong to a participant in the same batch as the quiz.
      */
-    public function checkTimeExpired(string $quizId, string $token): bool
+    public function verifyPinForQuiz(string $pin, string $publicSlug): array
     {
-        $data = $this->quizManager->loadQuiz($quizId);
-        if (!$data) return true;
-
-        foreach ($data['participants'] as $p) {
-            if ($p['token'] === $token && $p['status'] === 'running') {
-                $startTime = strtotime($p['start_time']);
-                $endTime = $startTime + ($data['quiz_info']['time_limit'] * 60);
-                return time() > $endTime;
-            }
+        $publicSlug = trim($publicSlug);
+        if ($publicSlug === '') {
+            return ['ok' => false, 'reason' => 'invalid_slug', 'message' => 'Invalid quiz link.'];
         }
-        return true;
+
+        $quizData = $this->quizManager->loadQuizBySlug($publicSlug);
+        if (!$quizData) {
+            return ['ok' => false, 'reason' => 'invalid_slug', 'message' => 'Invalid quiz link.'];
+        }
+
+        $quizBatchId = $quizData['quiz_info']['batch_id'] ?? '';
+        if ($quizBatchId === '') {
+            return ['ok' => false, 'reason' => 'invalid_slug', 'message' => 'This quiz is not configured.'];
+        }
+
+        if (($quizData['quiz_info']['status'] ?? '') !== 'active') {
+            return ['ok' => false, 'reason' => 'inactive', 'message' => 'This quiz is not accepting participants right now.'];
+        }
+
+        $found = $this->findParticipantByPin($pin);
+        if (!$found) {
+            return ['ok' => false, 'reason' => 'invalid_pin', 'message' => 'Invalid PIN. Please try again.'];
+        }
+
+        if ($found['batch_id'] !== $quizBatchId) {
+            return ['ok' => false, 'reason' => 'wrong_batch', 'message' => 'This PIN is not registered for this class batch.'];
+        }
+
+        $quizId = $quizData['quiz_info']['id'];
+        $batchId = $found['batch_id'];
+        $participantId = $found['participant']['id'];
+
+        if (!isset($quizData['attempts'])) {
+            $quizData['attempts'] = [];
+        }
+
+        $idx = $this->findAttemptIndex($quizData['attempts'], $batchId, $participantId);
+        if ($idx !== null && ($quizData['attempts'][$idx]['status'] ?? '') === 'finished') {
+            return ['ok' => false, 'reason' => 'finished', 'message' => 'You have already completed this quiz.'];
+        }
+
+        return [
+            'ok' => true,
+            'quiz_id' => $quizId,
+            'batch_id' => $batchId,
+            'participant_id' => $participantId,
+            'participant_name' => $found['participant']['name'],
+        ];
     }
 }
