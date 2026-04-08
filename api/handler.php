@@ -256,7 +256,12 @@ try {
                 exit;
             }
 
-            $quiz = $quizManager->createQuizForBatch($batchId, $name, $timeLimit, $totalDisplay, $normalized);
+            try {
+                $quiz = $quizManager->createQuizForBatch($batchId, $name, $timeLimit, $totalDisplay, $normalized);
+            } catch (\InvalidArgumentException $e) {
+                echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+                exit;
+            }
             $slug = $quiz['quiz_info']['public_slug'];
             $link = json_public_base_url() . '/take_quiz?q=' . rawurlencode($slug);
             $qi = $quiz['quiz_info'];

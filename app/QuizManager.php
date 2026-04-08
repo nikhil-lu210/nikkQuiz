@@ -46,6 +46,30 @@ class QuizManager
     }
 
     /**
+     * Whether another quiz in the same batch already uses this name (trimmed, case-insensitive).
+     */
+    public function isQuizNameTakenInBatch(string $batchId, string $name, ?string $exceptQuizId = null): bool
+    {
+        $name = trim($name);
+        if ($name === '' || $batchId === '') {
+            return false;
+        }
+        $norm = mb_strtolower($name, 'UTF-8');
+        $stmt = $this->pdo->prepare('SELECT id, name FROM quizzes WHERE batch_id = ?');
+        $stmt->execute([$batchId]);
+        while ($row = $stmt->fetch(\PDO::FETCH_ASSOC)) {
+            if ($exceptQuizId !== null && (string) $row['id'] === $exceptQuizId) {
+                continue;
+            }
+            if (mb_strtolower(trim((string) ($row['name'] ?? '')), 'UTF-8') === $norm) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
      * @param array<string, mixed> $data
      */
     public function migrateQuizData(array &$data): bool
@@ -108,6 +132,10 @@ class QuizManager
 
     public function createQuizForBatch(string $batchId, string $name, int $timeLimit, int $totalDisplay, array $questions): array
     {
+        $name = trim($name);
+        if ($this->isQuizNameTakenInBatch($batchId, $name)) {
+            throw new \InvalidArgumentException('A quiz with this name already exists in this batch. Choose a different name.');
+        }
         $quizId = $this->generateQuizId();
         $slug = $this->ensureUniqueSlug();
         $created = date('Y-m-d H:i:s');
@@ -120,7 +148,7 @@ class QuizManager
             $stmt->execute([
                 $quizId,
                 $batchId,
-                trim($name),
+                $name,
                 $timeLimit,
                 $totalDisplay,
                 $slug,
@@ -138,7 +166,7 @@ class QuizManager
             'quiz_info' => [
                 'id' => $quizId,
                 'batch_id' => $batchId,
-                'name' => trim($name),
+                'name' => $name,
                 'time_limit' => $timeLimit,
                 'total_display_questions' => $totalDisplay,
                 'created_at' => $created,
@@ -175,8 +203,13 @@ class QuizManager
     public function saveQuiz(string $quizId, array $data): bool
     {
         try {
-            $this->pdo->beginTransaction();
             $qi = $data['quiz_info'] ?? [];
+            $batchId = (string) ($qi['batch_id'] ?? '');
+            $qName = trim((string) ($qi['name'] ?? ''));
+            if ($batchId !== '' && $qName !== '' && $this->isQuizNameTakenInBatch($batchId, $qName, $quizId)) {
+                return false;
+            }
+            $this->pdo->beginTransaction();
             $stmt = $this->pdo->prepare(
                 'UPDATE quizzes SET name = ?, time_limit = ?, total_display_questions = ?, public_slug = ?, status = ? WHERE id = ?'
             );
@@ -446,6 +479,15 @@ class QuizManager
             return false;
         }
         $this->migrateQuizData($data);
+        $qi = $data['quiz_info'] ?? null;
+        if (!is_array($qi)) {
+            return false;
+        }
+        $batchId = (string) ($qi['batch_id'] ?? '');
+        $importName = trim((string) ($qi['name'] ?? ''));
+        if ($batchId !== '' && $this->isQuizNameTakenInBatch($batchId, $importName)) {
+            return false;
+        }
         try {
             $this->pdo->beginTransaction();
             $stmt = $this->pdo->prepare(
@@ -454,8 +496,8 @@ class QuizManager
             );
             $stmt->execute([
                 $qi['id'],
-                $qi['batch_id'] ?? '',
-                $qi['name'] ?? '',
+                $batchId,
+                $importName,
                 (int) ($qi['time_limit'] ?? 0),
                 (int) ($qi['total_display_questions'] ?? 0),
                 $qi['public_slug'] ?? $this->ensureUniqueSlug(),
