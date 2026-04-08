@@ -7,9 +7,9 @@
     <meta name="description" content="Enter your PIN and take your quiz.">
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="theme.css">
+    <link rel="stylesheet" href="assets/css/theme.css">
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
-    <script src="theme.js"></script>
+    <script src="assets/js/theme.js"></script>
     <style>
         * { font-family: 'Inter', sans-serif; }
         body { background: #0f0f1a; }
@@ -377,13 +377,13 @@
                 quizId = res.quiz_id;
                 startQuiz();
             } else {
-                btn.prop('disabled', false).text('Verify \u0026 Start Quiz');
                 if (res.finished) {
-                    $('#pinError').removeClass('hidden').text('You have already completed this quiz.');
-                } else {
-                    $('#pinError').removeClass('hidden').text(res.error);
-                    $('.pin-input').val('').first().focus();
+                    window.location.href = 'my_stats.php';
+                    return;
                 }
+                btn.prop('disabled', false).text('Verify \u0026 Start Quiz');
+                $('#pinError').removeClass('hidden').text(res.error);
+                $('.pin-input').val('').first().focus();
             }
         }, 'json').fail(function() {
             btn.prop('disabled', false).text('Verify \u0026 Start Quiz');

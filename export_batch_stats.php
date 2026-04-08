@@ -4,10 +4,7 @@ declare(strict_types=1);
 
 session_start();
 
-require_once __DIR__ . '/includes/SiteAuth.php';
-require_once __DIR__ . '/classes/QuizManager.php';
-require_once __DIR__ . '/classes/BatchManager.php';
-require_once __DIR__ . '/classes/StatsService.php';
+require_once __DIR__ . '/bootstrap.php';
 
 if (!SiteAuth::isAuthenticated()) {
     http_response_code(403);

@@ -1,5 +1,5 @@
 <?php
-require_once 'classes/QuizManager.php';
+require_once __DIR__ . '/bootstrap.php';
 $qm = new QuizManager();
 $data = json_decode(file_get_contents('nikkk.json'), true);
 if (json_last_error() !== JSON_ERROR_NONE) {

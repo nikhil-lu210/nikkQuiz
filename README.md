@@ -1,6 +1,6 @@
 # NikkQuiz — Lightweight Quiz Platform
 
-File-based quiz system: **PHP (OOP)**, **Tailwind CSS**, **jQuery**. No database — JSON files under `data/`. No Composer or npm build.
+**PHP (OOP)**, **Tailwind CSS**, **jQuery**. Data is stored in **SQLite** (`data/nikkquiz.sqlite` by default). Question uploads are still **JSON files** at create time. No Composer or npm build.
 
 ---
 
@@ -34,11 +34,17 @@ Open `http://localhost/nikkQuiz/` (Laragon) or `php -S localhost:8000` from the 
 
 Teacher pages (`index.php`, `batch.php`, `quiz.php`) and all teacher API actions require a **single site-wide password** so random visitors cannot create batches or call admin APIs. **Students are not blocked:** `take_quiz.php`, `quizzes.php`, and `my_stats.php` stay usable with quiz links and PINs only.
 
-1. Copy `config.local.php.example` to `config.local.php`.
+1. Copy `config/config.local.php.example` to **`config.local.php`** in the project root (or to `config/config.local.php`).
 2. Set `site_password` to a long secret, **or** set `site_password_hash` to a bcrypt hash from `password_hash()` (see comments in the example file).
 3. Open the app — you will be redirected to `login.php` until you sign in. Use **Sign out site** on the home page (or `logout_site.php`) when finished.
 
 `config.local.php` is listed in `.gitignore` — do not commit it.
+
+### Storage (SQLite)
+
+- Default database file: `data/nikkquiz.sqlite` (override with `sqlite_path` in `config.local.php`).
+- If you still have old **`data/batch_*.json`** / **`data/quiz_*.json`** files from a previous version, run **`php scripts/migrate_json_to_sqlite.php`** once (with an **empty** `batches` table). It imports those files, then you can rely on SQLite only.
+- The SQLite file is gitignored; back it up with your usual backup process.
 
 ---
 
@@ -46,28 +52,35 @@ Teacher pages (`index.php`, `batch.php`, `quiz.php`) and all teacher API actions
 
 ```
 nikkQuiz/
-├── config.php                 # Loads optional config.local.php
-├── config.local.php.example   # Copy to config.local.php (site password)
-├── includes/SiteAuth.php      # Owner session + page guard
-├── login.php                  # Site password form
-├── logout_site.php            # Clears owner session
-├── api/handler.php
-├── classes/
-│   ├── BatchManager.php    # Batches + teacher password
-│   ├── QuizManager.php     # Quizzes (per batch), slugs, attempts
-│   └── Participant.php     # Roster PINs, attempts, scoring
+├── bootstrap.php              # Autoloads app/*.php (load this before using classes)
+├── config.php                 # Thin wrapper → config/config.php
+├── config/
+│   ├── config.php             # Defaults + merges config.local.php (root or here)
+│   └── config.local.php.example
+├── app/                       # PHP application (autoloaded by class name)
+│   ├── Database.php           # SQLite connection + schema
+│   ├── SiteAuth.php           # Owner (site) login guard
+│   ├── BatchManager.php
+│   ├── QuizManager.php
+│   ├── Participant.php
+│   └── StatsService.php
+├── assets/
+│   ├── css/theme.css
+│   └── js/theme.js
+├── api/handler.php            # JSON API (requires bootstrap via require)
 ├── data/
-│   ├── batch_*.json
-│   └── quiz_*.json
-├── index.php               # List / create batches
-├── batch.php               # Teacher sign-in + Participants & Quizzes tabs
-├── quiz.php                # Results & question pool (teacher, session)
-├── quizzes.php             # Student: all active quizzes
-├── my_stats.php            # Student: personal stats (PIN) for the whole batch
-├── take_quiz.php           # Public link + PIN + timer
-├── sample_questions.json
+│   ├── nikkquiz.sqlite        # Runtime DB (gitignored)
+│   └── (optional legacy batch_*.json / quiz_*.json for migration)
+├── scripts/
+│   └── migrate_json_to_sqlite.php
+├── index.php, batch.php, quiz.php, login.php, …   # Web entry points (project root)
+├── take_quiz.php, quizzes.php, my_stats.php
+├── participant_detail.php, export_batch_stats.php, logout_site.php
+├── sample_questions.json      # Example question pool for uploads
 └── README.md
 ```
+
+Web URLs stay the same (`/nikkQuiz/index.php`, etc.); only internal folders changed.
 
 ---
 

@@ -1,7 +1,6 @@
 <?php
 
-require_once __DIR__ . '/QuizManager.php';
-require_once __DIR__ . '/BatchManager.php';
+declare(strict_types=1);
 
 class StatsService
 {

@@ -2,11 +2,7 @@
 session_start();
 header('Content-Type: application/json');
 
-require_once __DIR__ . '/../classes/QuizManager.php';
-require_once __DIR__ . '/../classes/BatchManager.php';
-require_once __DIR__ . '/../classes/Participant.php';
-require_once __DIR__ . '/../classes/StatsService.php';
-require_once __DIR__ . '/../includes/SiteAuth.php';
+require_once __DIR__ . '/../bootstrap.php';
 
 $quizManager = new QuizManager();
 $batchManager = new BatchManager();
@@ -447,6 +443,13 @@ try {
                 break;
             }
             $finished = ($v['reason'] ?? '') === 'finished';
+            if ($finished && !empty($v['batch_id']) && !empty($v['participant_id'])) {
+                $_SESSION['student_identity'] = [
+                    'batch_id' => $v['batch_id'],
+                    'participant_id' => $v['participant_id'],
+                    'participant_name' => $v['participant_name'] ?? '',
+                ];
+            }
             echo json_encode([
                 'success' => false,
                 'error' => $v['message'] ?? 'Verification failed.',

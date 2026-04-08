@@ -3,9 +3,7 @@
  * Dev smoke test: batch + participants + quiz with questions.
  * Run: php test_setup.php
  */
-require_once __DIR__ . '/classes/QuizManager.php';
-require_once __DIR__ . '/classes/BatchManager.php';
-require_once __DIR__ . '/classes/Participant.php';
+require_once __DIR__ . '/bootstrap.php';
 
 $qm = new QuizManager();
 $bm = new BatchManager();

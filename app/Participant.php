@@ -1,43 +1,42 @@
 <?php
 
-require_once __DIR__ . '/QuizManager.php';
-require_once __DIR__ . '/BatchManager.php';
+declare(strict_types=1);
 
 class Participant
 {
     private QuizManager $quizManager;
     private BatchManager $batchManager;
+    private \PDO $pdo;
 
     public function __construct()
     {
         $this->quizManager = new QuizManager();
         $this->batchManager = new BatchManager();
+        $this->pdo = Database::pdo();
     }
 
     private function generateUniquePin(): string
     {
         do {
-            $pin = str_pad((string)random_int(100000, 999999), 6, '0', STR_PAD_LEFT);
+            $pin = str_pad((string) random_int(100000, 999999), 6, '0', STR_PAD_LEFT);
         } while ($this->batchManager->isPinTaken($pin));
+
         return $pin;
     }
 
-    private function generateParticipantId(array $existing): string
+    private function generateParticipantId(string $batchId): string
     {
         $chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+        $stmt = $this->pdo->prepare('SELECT 1 FROM participants WHERE batch_id = ? AND id = ? LIMIT 1');
         do {
             $id = 'STU-';
             for ($i = 0; $i < 5; $i++) {
                 $id .= $chars[random_int(0, strlen($chars) - 1)];
             }
-            $exists = false;
-            foreach ($existing as $p) {
-                if (($p['id'] ?? '') === $id) {
-                    $exists = true;
-                    break;
-                }
-            }
+            $stmt->execute([$batchId, $id]);
+            $exists = (bool) $stmt->fetchColumn();
         } while ($exists);
+
         return $id;
     }
 
@@ -48,7 +47,7 @@ class Participant
             return null;
         }
 
-        $participantId = $this->generateParticipantId($data['participants']);
+        $participantId = $this->generateParticipantId($batchId);
         $pin = $this->generateUniquePin();
 
         $participant = [
@@ -58,6 +57,7 @@ class Participant
         ];
 
         $data['participants'][] = $participant;
+
         $this->batchManager->saveBatch($batchId, $data);
 
         return $participant;
@@ -73,6 +73,7 @@ class Participant
             $data['participants'],
             fn($p) => ($p['id'] ?? '') !== $participantId
         ));
+
         return $this->batchManager->saveBatch($batchId, $data);
     }
 
@@ -81,23 +82,27 @@ class Participant
         if (!preg_match('/^\d{6}$/', $pin)) {
             return null;
         }
-        $dataDir = __DIR__ . '/../data';
-        foreach (glob($dataDir . '/batch_*.json') as $file) {
-            $data = json_decode(file_get_contents($file), true);
-            if (empty($data['participants'])) {
-                continue;
-            }
-            foreach ($data['participants'] as $p) {
-                if (($p['pin'] ?? '') === $pin) {
-                    return [
-                        'batch_id' => $data['batch_info']['id'],
-                        'batch_name' => $data['batch_info']['name'],
-                        'participant' => $p,
-                    ];
-                }
-            }
+        $stmt = $this->pdo->prepare(
+            'SELECT p.id, p.name, p.pin, p.batch_id, b.name AS batch_name
+             FROM participants p
+             INNER JOIN batches b ON b.id = p.batch_id
+             WHERE p.pin = ? LIMIT 1'
+        );
+        $stmt->execute([$pin]);
+        $row = $stmt->fetch(\PDO::FETCH_ASSOC);
+        if (!$row) {
+            return null;
         }
-        return null;
+
+        return [
+            'batch_id' => $row['batch_id'],
+            'batch_name' => $row['batch_name'],
+            'participant' => [
+                'id' => $row['id'],
+                'name' => $row['name'],
+                'pin' => $row['pin'],
+            ],
+        ];
     }
 
     private function findAttemptIndex(array $attempts, string $batchId, string $participantId): ?int
@@ -107,6 +112,7 @@ class Participant
                 return $i;
             }
         }
+
         return null;
     }
 
@@ -154,6 +160,7 @@ class Participant
             }
             if (($att['status'] ?? '') === 'running') {
                 $this->quizManager->saveQuiz($quizId, $data);
+
                 return $this->buildStartResponse($data, $att, $participantRow['name']);
             }
         }
@@ -249,8 +256,8 @@ class Participant
         $total = count($att['assigned_questions']);
 
         foreach ($answers as $ans) {
-            $qIndex = (int)$ans['question_index'];
-            $selectedOption = (int)$ans['selected'];
+            $qIndex = (int) $ans['question_index'];
+            $selectedOption = (int) $ans['selected'];
             if (isset($data['questions'][$qIndex])) {
                 if ($data['questions'][$qIndex]['answer'] === $selectedOption) {
                     $correct++;
@@ -267,7 +274,7 @@ class Participant
     private function getResults(array $attempt, array $quizData): array
     {
         $total = count($attempt['assigned_questions']);
-        $marks = (int)($attempt['marks'] ?? 0);
+        $marks = (int) ($attempt['marks'] ?? 0);
         $percentage = $total > 0 ? round(($marks / $total) * 100) : 0;
 
         if ($percentage >= 80) {
@@ -317,6 +324,7 @@ class Participant
         }
         $startTime = strtotime($att['start_time']);
         $endTime = $startTime + ($data['quiz_info']['time_limit'] * 60);
+
         return time() > $endTime;
     }
 
@@ -363,7 +371,14 @@ class Participant
 
         $idx = $this->findAttemptIndex($quizData['attempts'], $batchId, $participantId);
         if ($idx !== null && ($quizData['attempts'][$idx]['status'] ?? '') === 'finished') {
-            return ['ok' => false, 'reason' => 'finished', 'message' => 'You have already completed this quiz.'];
+            return [
+                'ok' => false,
+                'reason' => 'finished',
+                'message' => 'You have already completed this quiz.',
+                'batch_id' => $batchId,
+                'participant_id' => $participantId,
+                'participant_name' => $found['participant']['name'] ?? '',
+            ];
         }
 
         return [

@@ -1,5 +1,6 @@
 # === Quiz Data (generated at runtime) ===
 data/*.json
+data/*.sqlite
 !data/.gitkeep
 
 # === OS Files ===
@@ -34,6 +35,7 @@ error_log
 .env.local
 .env.*.local
 config.local.php
+config/config.local.php
 
 # === Misc ===
 .gemini/

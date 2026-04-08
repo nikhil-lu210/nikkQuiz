@@ -1,6 +1,6 @@
 <?php
 session_start();
-require_once __DIR__ . '/includes/SiteAuth.php';
+require_once __DIR__ . '/bootstrap.php';
 SiteAuth::requirePage();
 ?>
 <!DOCTYPE html>
@@ -11,9 +11,9 @@ SiteAuth::requirePage();
     <title>Student detail — NikkQuiz</title>
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="theme.css">
+    <link rel="stylesheet" href="assets/css/theme.css">
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
-    <script src="theme.js"></script>
+    <script src="assets/js/theme.js"></script>
     <style>
         * { font-family: 'Inter', sans-serif; }
         body { background: #0f0f1a; }

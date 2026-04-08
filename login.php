@@ -3,7 +3,7 @@
 declare(strict_types=1);
 
 session_start();
-require_once __DIR__ . '/includes/SiteAuth.php';
+require_once __DIR__ . '/bootstrap.php';
 
 if (SiteAuth::isConfigured() && SiteAuth::isAuthenticated()) {
     $r = isset($_GET['redirect']) ? rawurldecode((string) $_GET['redirect']) : '';
@@ -37,8 +37,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && SiteAuth::isConfigured()) {
     <title>Site login — NikkQuiz</title>
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="theme.css">
-    <script src="theme.js"></script>
+    <link rel="stylesheet" href="assets/css/theme.css">
+    <script src="assets/js/theme.js"></script>
     <style>
         * { font-family: 'Inter', sans-serif; }
         body { background: #0f0f1a; }

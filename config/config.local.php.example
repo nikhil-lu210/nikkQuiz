@@ -1,0 +1,25 @@
+<?php
+
+declare(strict_types=1);
+
+/**
+ * Local overrides (optional).
+ *
+ * Copy to either:
+ *   - config.local.php in the project root (legacy), or
+ *   - config/config.local.php
+ *
+ * Never commit real secrets.
+ */
+
+return [
+    // Optional: SQLite database file (default: project data/nikkquiz.sqlite)
+    // 'sqlite_path' => dirname(__DIR__) . '/data/nikkquiz.sqlite',
+
+    // Option A — plain site password (owner login)
+    'site_password' => 'change-this-to-a-long-secret',
+
+    // Option B — bcrypt hash for site password
+    // Generate once: php -r "echo password_hash('your-secret', PASSWORD_DEFAULT), PHP_EOL;"
+    // 'site_password_hash' => '$2y$10$...........................................................',
+];
