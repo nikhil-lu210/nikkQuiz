@@ -68,6 +68,7 @@
                     <tbody id="statsBody"></tbody>
                 </table>
             </div>
+            <p class="text-xs text-gray-500 mt-2">Click a quiz row to see your answers and what was correct.</p>
         </div>
     </div>
 
@@ -109,6 +110,16 @@
         $('#btnView').prop('disabled', getPin().length !== 6);
     }
 
+    function followRedirectIfAny() {
+        const params = new URLSearchParams(window.location.search);
+        const redir = params.get('redirect');
+        if (redir) {
+            window.location.replace(redir);
+            return true;
+        }
+        return false;
+    }
+
     function loadStats(pinPost) {
         const data = { action: 'student_stats' };
         if (pinPost) data.pin = pinPost;
@@ -122,6 +133,7 @@
             $('#dash').removeClass('hidden');
             $('#btnLogoutStudent').removeClass('hidden');
             render(res.stats);
+            followRedirectIfAny();
         }, 'json');
     }
 
@@ -162,7 +174,8 @@
                 pct = (q.percentage != null ? q.percentage : 0) + '%';
                 grade = (q.emoji || '') + ' <span class="text-gray-400 text-xs">' + escapeHtml(q.grade || '') + '</span>';
             }
-            rows += '<tr class="border-b border-gray-800/60 hover:bg-white/5">';
+            const href = 'student_quiz_detail?id=' + encodeURIComponent(q.quiz_id || '');
+            rows += '<tr class="border-b border-gray-800/60 hover:bg-white/5 cursor-pointer student-quiz-row" tabindex="0" role="link" data-href="' + href + '" title="View your answers for this quiz">';
             rows += '<td class="px-4 py-3 font-medium text-white">' + escapeHtml(q.quiz_name) + '</td>';
             rows += '<td class="px-4 py-3">' + status + '</td>';
             rows += '<td class="px-4 py-3 text-center text-violet-300">' + score + '</td>';
@@ -184,6 +197,18 @@
         }, 'json');
     });
 
+    $(document).on('click', '.student-quiz-row', function() {
+        const h = $(this).attr('data-href');
+        if (h) window.location.href = h;
+    });
+    $(document).on('keydown', '.student-quiz-row', function(e) {
+        if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            const h = $(this).attr('data-href');
+            if (h) window.location.href = h;
+        }
+    });
+
     $(document).ready(function() {
         buildPinInputs();
         $.post(API, { action: 'student_stats' }, function(res) {
@@ -192,6 +217,7 @@
                 $('#dash').removeClass('hidden');
                 $('#btnLogoutStudent').removeClass('hidden');
                 render(res.stats);
+                followRedirectIfAny();
             }
         }, 'json');
     });

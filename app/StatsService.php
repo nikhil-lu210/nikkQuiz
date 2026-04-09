@@ -560,6 +560,103 @@ class StatsService
     }
 
     /**
+     * Student: one quiz attempt with per-question correct/incorrect (same batch as session).
+     *
+     * @return array<string, mixed>|null
+     */
+    public function getStudentQuizDetail(string $batchId, string $participantId, string $quizId): ?array
+    {
+        $data = $this->quizManager->loadQuiz($quizId);
+        if (!$data || ($data['quiz_info']['batch_id'] ?? '') !== $batchId) {
+            return null;
+        }
+
+        $batch = $this->batchManager->loadBatch($batchId);
+        if (!$batch) {
+            return null;
+        }
+
+        $found = false;
+        foreach ($batch['participants'] ?? [] as $p) {
+            if (($p['id'] ?? '') === $participantId) {
+                $found = true;
+                break;
+            }
+        }
+        if (!$found) {
+            return null;
+        }
+
+        $qi = $data['quiz_info'];
+        $att = $this->findAttempt($data['attempts'] ?? [], $batchId, $participantId);
+        if ($att === null) {
+            return [
+                'quiz_id' => $quizId,
+                'quiz_name' => $qi['name'] ?? '',
+                'time_limit' => (int) ($qi['time_limit'] ?? 0),
+                'attempt_status' => 'not_started',
+                'marks' => null,
+                'total' => null,
+                'percentage' => null,
+                'grade' => null,
+                'emoji' => null,
+                'started_at' => null,
+                'completed_at' => null,
+                'total_time' => null,
+                'questions' => [],
+            ];
+        }
+
+        $st = $att['status'] ?? '';
+        if ($st === 'running') {
+            $assigned = $att['assigned_questions'] ?? [];
+
+            return [
+                'quiz_id' => $quizId,
+                'quiz_name' => $qi['name'] ?? '',
+                'time_limit' => (int) ($qi['time_limit'] ?? 0),
+                'attempt_status' => 'in_progress',
+                'marks' => null,
+                'total' => count($assigned),
+                'percentage' => null,
+                'grade' => null,
+                'emoji' => null,
+                'started_at' => $att['start_time'] ?? null,
+                'completed_at' => null,
+                'total_time' => null,
+                'questions' => $this->buildQuestionDetailsForAttempt($data, $att, false),
+            ];
+        }
+
+        if ($st === 'finished') {
+            $total = count($att['assigned_questions'] ?? []);
+            $marks = (int) ($att['marks'] ?? 0);
+            $pct = $total > 0 ? (int) round(($marks / $total) * 100) : 0;
+            $g = self::gradeFromPercent($pct);
+            $startT = $att['start_time'] ?? null;
+            $endT = $att['end_time'] ?? null;
+
+            return [
+                'quiz_id' => $quizId,
+                'quiz_name' => $qi['name'] ?? '',
+                'time_limit' => (int) ($qi['time_limit'] ?? 0),
+                'attempt_status' => 'finished',
+                'marks' => $marks,
+                'total' => $total,
+                'percentage' => $pct,
+                'grade' => $g['grade'],
+                'emoji' => $g['emoji'],
+                'started_at' => $startT,
+                'completed_at' => $endT,
+                'total_time' => self::formatAttemptDuration($startT, $endT),
+                'questions' => $this->buildQuestionDetailsForAttempt($data, $att, true),
+            ];
+        }
+
+        return null;
+    }
+
+    /**
      * @param array{answers?: array, assigned_questions?: array} $att
      * @return list<array<string, mixed>>
      */

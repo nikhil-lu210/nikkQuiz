@@ -36,6 +36,7 @@ $publicActions = [
     'list_active_quizzes',
     'get_quiz_public',
     'student_stats',
+    'student_quiz_detail',
     'logout_student_stats',
     'verify_pin',
     'start_quiz',
@@ -454,6 +455,41 @@ try {
                 exit;
             }
             echo json_encode(['success' => true, 'stats' => $stats]);
+            break;
+
+        case 'student_quiz_detail':
+            $quizId = trim((string) ($_POST['quiz_id'] ?? $_GET['quiz_id'] ?? ''));
+            $pin = preg_replace('/\D/', '', $_POST['pin'] ?? '');
+            if (strlen($pin) === 6) {
+                $found = $participant->findParticipantByPin($pin);
+                if (!$found) {
+                    echo json_encode(['success' => false, 'error' => 'Invalid PIN.']);
+                    exit;
+                }
+                $bid = $found['batch_id'];
+                $pid = $found['participant']['id'];
+                $_SESSION['student_identity'] = [
+                    'batch_id' => $bid,
+                    'participant_id' => $pid,
+                    'participant_name' => $found['participant']['name'] ?? '',
+                ];
+            } elseif (!empty($_SESSION['student_identity']['batch_id']) && !empty($_SESSION['student_identity']['participant_id'])) {
+                $bid = $_SESSION['student_identity']['batch_id'];
+                $pid = $_SESSION['student_identity']['participant_id'];
+            } else {
+                echo json_encode(['success' => false, 'error' => 'PIN required', 'needs_pin' => true]);
+                exit;
+            }
+            if ($quizId === '') {
+                echo json_encode(['success' => false, 'error' => 'Quiz required.']);
+                exit;
+            }
+            $detail = $statsService->getStudentQuizDetail($bid, $pid, $quizId);
+            if ($detail === null) {
+                echo json_encode(['success' => false, 'error' => 'Quiz not found or access denied.']);
+                exit;
+            }
+            echo json_encode(['success' => true, 'detail' => $detail]);
             break;
 
         case 'logout_student_stats':
