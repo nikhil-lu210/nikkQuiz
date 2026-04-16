@@ -279,6 +279,74 @@
     let currentQ = 0;
     let timerInterval = null;
     let remainingSeconds = 0;
+    let sessionPingTimer = null;
+
+    const DRAFT_KEY = 'nikkquiz_quiz_draft_v1_';
+
+    function draftStorageKey() {
+        return DRAFT_KEY + QUIZ_SLUG;
+    }
+
+    function saveAnswersDraft() {
+        try {
+            localStorage.setItem(draftStorageKey(), JSON.stringify({
+                answers: answers,
+                updatedAt: Date.now()
+            }));
+        } catch (e) { /* storage full or disabled */ }
+    }
+
+    function loadAnswersDraft() {
+        try {
+            const raw = localStorage.getItem(draftStorageKey());
+            if (!raw) return null;
+            const o = JSON.parse(raw);
+            return o && typeof o.answers === 'object' ? o : null;
+        } catch (e) {
+            return null;
+        }
+    }
+
+    function clearAnswersDraft() {
+        try {
+            localStorage.removeItem(draftStorageKey());
+        } catch (e) { /* ignore */ }
+    }
+
+    function mergeDraftIntoAnswers() {
+        const draft = loadAnswersDraft();
+        if (!draft || !questions.length) return false;
+        const src = draft.answers;
+        let n = 0;
+        for (let i = 0; i < questions.length; i++) {
+            const v = src[i] !== undefined ? src[i] : src[String(i)];
+            if (v !== undefined && v !== null && typeof v === 'number') {
+                answers[i] = v;
+                n++;
+            }
+        }
+        return n > 0;
+    }
+
+    function startSessionPing() {
+        stopSessionPing();
+        sessionPingTimer = setInterval(function() {
+            $.post(API, { action: 'quiz_session_ping' }, function() {}, 'json');
+        }, 120000);
+    }
+
+    function stopSessionPing() {
+        if (sessionPingTimer) {
+            clearInterval(sessionPingTimer);
+            sessionPingTimer = null;
+        }
+    }
+
+    $(document).on('visibilitychange', function() {
+        if (document.visibilityState === 'hidden' && !$('#screenQuiz').hasClass('hidden')) {
+            saveAnswersDraft();
+        }
+    });
 
     // ─── Initialization ──────────────────────────────────────────────
     $(document).ready(function() {
@@ -406,12 +474,24 @@
                     return;
                 }
 
+                const restored = mergeDraftIntoAnswers();
                 buildNavDots();
                 showScreen('quiz');
                 renderQuestion(0);
                 startTimer();
+                startSessionPing();
+                if (restored) {
+                    setTimeout(function() {
+                        alert('Your previous answers on this device were restored. Check each question before submitting.');
+                    }, 400);
+                }
             } else {
-                alert(res.error);
+                const msg = res.error || 'Could not start.';
+                if (msg.indexOf('Session') !== -1) {
+                    alert(msg + '\n\nYour answers are saved in this browser. Enter your PIN again to continue.');
+                } else {
+                    alert(msg);
+                }
             }
         }, 'json');
     }
@@ -481,6 +561,7 @@
 
     function selectOption(qIdx, optIdx) {
         answers[qIdx] = optIdx;
+        saveAnswersDraft();
         renderQuestion(qIdx);
     }
 
@@ -507,6 +588,7 @@
 
             if (remainingSeconds <= 0) {
                 clearInterval(timerInterval);
+                saveAnswersDraft();
                 alert('⏰ Time is up! Your quiz is being submitted.');
                 submitQuiz();
             }
@@ -533,6 +615,8 @@
     // ─── Submit Quiz ─────────────────────────────────────────────────
     function submitQuiz() {
         clearInterval(timerInterval);
+        stopSessionPing();
+        saveAnswersDraft();
         $('#btnSubmit').prop('disabled', true).text('Submitting...');
 
         const answerArray = [];
@@ -548,9 +632,15 @@
             answers: JSON.stringify(answerArray)
         }, function(res) {
             if (res.success) {
+                clearAnswersDraft();
                 showResults(res.results);
             } else {
-                alert(res.error);
+                const msg = res.error || 'Submit failed.';
+                if (msg.indexOf('Session') !== -1) {
+                    alert(msg + '\n\nYour answers are saved in this browser. Reload the page, enter your PIN again, and your choices should come back.');
+                } else {
+                    alert(msg);
+                }
             }
         }, 'json').fail(function() {
             alert('Failed to submit. Please check your connection.');

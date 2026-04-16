@@ -1,5 +1,13 @@
 <?php
-session_start();
+
+// Quiz flows rely on PHP sessions; default gc_maxlifetime (often 24m) expires long attempts.
+if (session_status() === PHP_SESSION_NONE) {
+    $sessionLife = 8 * 3600; // 8 hours idle before server may drop session data
+    ini_set('session.gc_maxlifetime', (string) $sessionLife);
+    ini_set('session.cookie_lifetime', (string) $sessionLife);
+    session_start();
+}
+
 header('Content-Type: application/json');
 
 require_once __DIR__ . '/../bootstrap.php';
@@ -39,6 +47,7 @@ $publicActions = [
     'student_quiz_detail',
     'logout_student_stats',
     'verify_pin',
+    'quiz_session_ping',
     'start_quiz',
     'submit_quiz',
 ];
@@ -598,6 +607,17 @@ try {
                 'reason' => $v['reason'] ?? 'unknown',
                 'finished' => $finished,
             ]);
+            break;
+
+        case 'quiz_session_ping':
+            $quizId = $_SESSION['take_quiz_id'] ?? '';
+            $batchId = $_SESSION['take_batch_id'] ?? '';
+            $participantId = $_SESSION['take_participant_id'] ?? '';
+            if ($quizId === '' || $batchId === '' || $participantId === '') {
+                echo json_encode(['success' => false, 'error' => 'no_session']);
+                exit;
+            }
+            echo json_encode(['success' => true]);
             break;
 
         case 'start_quiz':
