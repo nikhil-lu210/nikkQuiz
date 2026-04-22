@@ -527,6 +527,110 @@ class StatsService
     }
 
     /**
+     * Per pool index (question position in the pool): how many **finished** attempts included
+     * that question, and of those, correct vs not correct (wrong or no answer), plus
+     * participant lists for each bucket.
+     *
+     * @return array{per_question: list<array<string, mixed>}|null
+     */
+    public function getQuizQuestionPoolStats(string $batchId, string $quizId): ?array
+    {
+        $data = $this->quizManager->loadQuiz($quizId);
+        if (!$data || ($data['quiz_info']['batch_id'] ?? '') !== $batchId) {
+            return null;
+        }
+        $batch = $this->batchManager->loadBatch($batchId);
+        if (!$batch) {
+            return null;
+        }
+        $questions = $data['questions'] ?? [];
+        $poolCount = count($questions);
+        $perQuestion = [];
+        for ($i = 0; $i < $poolCount; $i++) {
+            $perQuestion[] = [
+                'attempts' => 0,
+                'correct' => 0,
+                'wrong' => 0,
+                'attempt_participants' => [],
+                'correct_participants' => [],
+                'wrong_participants' => [],
+            ];
+        }
+        if ($poolCount === 0) {
+            return ['per_question' => $perQuestion];
+        }
+
+        foreach ($batch['participants'] ?? [] as $p) {
+            $pid = (string) ($p['id'] ?? '');
+            if ($pid === '') {
+                continue;
+            }
+            $pname = (string) ($p['name'] ?? '');
+            $att = $this->findAttempt($data['attempts'] ?? [], $batchId, $pid);
+            if ($att === null || ($att['status'] ?? '') !== 'finished') {
+                continue;
+            }
+            $byQ = [];
+            foreach ($att['answers'] ?? [] as $a) {
+                $qi = (int) ($a['question_index'] ?? -1);
+                if ($qi >= 0) {
+                    $byQ[$qi] = (int) ($a['selected'] ?? 0);
+                }
+            }
+            $who = ['participant_id' => $pid, 'participant_name' => $pname];
+            foreach ($att['assigned_questions'] ?? [] as $qIdxRaw) {
+                $qIdx = (int) $qIdxRaw;
+                if ($qIdx < 0 || $qIdx >= $poolCount) {
+                    continue;
+                }
+                if (!isset($questions[$qIdx])) {
+                    continue;
+                }
+                $perQuestion[$qIdx]['attempts']++;
+                $perQuestion[$qIdx]['attempt_participants'][] = $who;
+                $correctIdx = (int) ($questions[$qIdx]['answer'] ?? 0);
+                if (array_key_exists($qIdx, $byQ) && $byQ[$qIdx] === $correctIdx) {
+                    $perQuestion[$qIdx]['correct']++;
+                    $perQuestion[$qIdx]['correct_participants'][] = $who;
+                } else {
+                    $perQuestion[$qIdx]['wrong']++;
+                    $perQuestion[$qIdx]['wrong_participants'][] = $who;
+                }
+            }
+        }
+
+        foreach ($perQuestion as $i => $row) {
+            $perQuestion[$i]['attempt_participants'] = self::sortParticipantRowsForDisplay($row['attempt_participants'] ?? []);
+            $perQuestion[$i]['correct_participants'] = self::sortParticipantRowsForDisplay($row['correct_participants'] ?? []);
+            $perQuestion[$i]['wrong_participants'] = self::sortParticipantRowsForDisplay($row['wrong_participants'] ?? []);
+        }
+
+        return ['per_question' => $perQuestion];
+    }
+
+    /**
+     * @param list<array{participant_id: string, participant_name: string}> $rows
+     * @return list<array{participant_id: string, participant_name: string}>
+     */
+    private static function sortParticipantRowsForDisplay(array $rows): array
+    {
+        usort(
+            $rows,
+            static function (array $a, array $b): int {
+                $na = mb_strtolower($a['participant_name'] ?? '', 'UTF-8');
+                $nb = mb_strtolower($b['participant_name'] ?? '', 'UTF-8');
+                if ($na !== $nb) {
+                    return $na <=> $nb;
+                }
+
+                return strcmp($a['participant_id'] ?? '', $b['participant_id'] ?? '');
+            },
+        );
+
+        return $rows;
+    }
+
+    /**
      * Teacher: per-student drill-down — each quiz attempt with per-question correct/incorrect.
      */
     public function getTeacherParticipantDetail(string $batchId, string $participantId): ?array

@@ -53,6 +53,44 @@ SiteAuth::requirePage();
             border-color: #e2e8f0;
             color: #334155;
         }
+        .stat-pool-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+            font-size: 0.75rem;
+            font-weight: 600;
+            line-height: 1.2;
+            padding: 0.4rem 0.75rem;
+            border-radius: 9999px;
+            border-width: 1px;
+            transition: transform 0.12s, box-shadow 0.12s, background 0.12s, border-color 0.12s;
+        }
+        .stat-pool-btn:not(:disabled):hover {
+            transform: translateY(-1px);
+            box-shadow: 0 2px 8px rgba(15, 23, 42, 0.08);
+        }
+        .stat-pool-btn:disabled {
+            cursor: not-allowed;
+            opacity: 0.5;
+        }
+        .stat-pool-btn--att {
+            background: #f1f5f9;
+            border-color: #cbd5e1;
+            color: #0f172a;
+        }
+        .stat-pool-btn--att:not(:disabled):hover { background: #e2e8f0; border-color: #94a3b8; }
+        .stat-pool-btn--ok {
+            background: #ecfdf5;
+            border-color: #6ee7b7;
+            color: #047857;
+        }
+        .stat-pool-btn--ok:not(:disabled):hover { background: #d1fae5; border-color: #34d399; }
+        .stat-pool-btn--bad {
+            background: #fff1f2;
+            border-color: #fecdd3;
+            color: #be123c;
+        }
+        .stat-pool-btn--bad:not(:disabled):hover { background: #ffe4e6; border-color: #fb7185; }
     </style>
 </head>
 <body class="qp-page min-h-screen bg-slate-50">
@@ -77,6 +115,15 @@ SiteAuth::requirePage();
             </div>
 
             <div id="questionList" class="space-y-4"></div>
+        </div>
+    </div>
+
+    <div id="modalPoolStat" class="fixed inset-0 z-50 hidden items-center justify-center bp-modal-overlay p-4 overflow-y-auto" aria-hidden="true">
+        <div class="bp-modal-card rounded-xl w-full max-w-md p-6 sm:p-7 relative my-8 shadow-lg">
+            <button type="button" class="close-pool-stat absolute top-4 right-4 text-slate-400 hover:text-slate-700 text-xl leading-none" aria-label="Close">×</button>
+            <h3 class="text-lg font-bold bp-heading pr-8 mb-1" id="modalPoolStatTitle">Participants</h3>
+            <p class="text-xs text-slate-500 mb-4" id="modalPoolStatSub"></p>
+            <ul class="max-h-72 overflow-y-auto space-y-2 text-sm" id="modalPoolStatList"></ul>
         </div>
     </div>
 
@@ -108,6 +155,7 @@ SiteAuth::requirePage();
     const BATCH_ID = params.get('batch_id');
     const QUIZ_ID = params.get('id');
     let quizPayload = null;
+    let poolStats = null; // { per_question: [{ attempts, correct, wrong, *_participants }, ...] }
 
     function toast(msg, err) {
         const c = err ? 'bg-red-50 border border-red-200 text-red-800' : 'bg-emerald-50 border border-emerald-200 text-emerald-900';
@@ -183,6 +231,39 @@ SiteAuth::requirePage();
         $('#modalEdit').removeClass('hidden').addClass('flex');
     }
 
+    function openPoolStatModal(poolIndex, kind) {
+        const pq = (poolStats && poolStats.per_question) ? (poolStats.per_question[poolIndex] || {}) : {};
+        const qn = poolIndex + 1;
+        let key = 'attempt_participants';
+        let title = 'Who attempted this question';
+        let sub = 'Finished attempts in this batch that included this item.';
+        if (kind === 'correct') {
+            key = 'correct_participants';
+            title = 'Correct';
+            sub = 'Students who selected the right answer.';
+        } else if (kind === 'wrong') {
+            key = 'wrong_participants';
+            title = 'Wrong or no answer';
+            sub = 'Wrong option chosen, or no response recorded.';
+        }
+        const list = pq[key] || [];
+        $('#modalPoolStatTitle').text('Question ' + qn + ' — ' + title);
+        $('#modalPoolStatSub').text(sub);
+        if (list.length === 0) {
+            $('#modalPoolStatList').html('<li class="text-slate-500 text-center py-4">No students in this list.</li>');
+        } else {
+            let li = '';
+            list.forEach(function(p) {
+                li += '<li class="bp-surface rounded-lg px-3 py-2.5 border border-slate-200 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">';
+                li += '<span class="text-slate-900 font-medium">' + escapeHtml(p.participant_name || '—') + '</span>';
+                li += '<span class="text-xs text-slate-500 font-mono">' + escapeHtml(p.participant_id || '') + '</span>';
+                li += '</li>';
+            });
+            $('#modalPoolStatList').html(li);
+        }
+        $('#modalPoolStat').removeClass('hidden').addClass('flex').attr('aria-hidden', 'false');
+    }
+
     function openEditModal(poolIndex) {
         if (!quizPayload || !quizPayload.questions) return;
         const q = quizPayload.questions[poolIndex];
@@ -222,8 +303,20 @@ SiteAuth::requirePage();
             $('#deleteHint').addClass('hidden').text('');
         }
 
+        const pq = (poolStats && poolStats.per_question) ? poolStats.per_question : [];
         let h = '';
         questions.forEach(function(q, poolIndex) {
+            const s = pq[poolIndex] || {};
+            const nAtt = Number(s.attempts) || 0;
+            const nOk = Number(s.correct) || 0;
+            const nBad = Number(s.wrong) || 0;
+            const statsHtml = '<div class="flex flex-wrap gap-2 mt-2 mb-1">' +
+                '<button type="button" class="stat-pool-btn stat-pool-btn--att" data-pool="' + poolIndex + '" data-kind="attempts" title="Open list: who had this question on a finished attempt">' +
+                '<span class="tabular-nums text-base">' + nAtt + '</span> ' + (nAtt === 1 ? 'attempt' : 'attempts') + '</button>' +
+                '<button type="button" class="stat-pool-btn stat-pool-btn--ok" data-pool="' + poolIndex + '" data-kind="correct" title="Open list: correct answer">' +
+                '<span class="tabular-nums text-base">' + nOk + '</span> correct</button>' +
+                '<button type="button" class="stat-pool-btn stat-pool-btn--bad" data-pool="' + poolIndex + '" data-kind="wrong" title="Open list: wrong or no answer">' +
+                '<span class="tabular-nums text-base">' + nBad + '</span> wrong</button></div>';
             const opts = q.options || [];
             let optsHtml = '<ul class="mt-3 space-y-2">';
             opts.forEach(function(o, oi) {
@@ -240,6 +333,7 @@ SiteAuth::requirePage();
             h += '<div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">';
             h += '<div class="min-w-0 flex-1">';
             h += '<p class="text-xs font-semibold text-indigo-600 uppercase tracking-wide mb-1">Question ' + (poolIndex + 1) + ' · id ' + escapeHtml(String(q.id)) + '</p>';
+            h += statsHtml;
             h += '<p class="text-slate-900 font-medium leading-relaxed">' + escapeHtml(q.question || '') + '</p>';
             h += optsHtml;
             h += '</div>';
@@ -252,17 +346,40 @@ SiteAuth::requirePage();
     }
 
     function loadQuiz() {
-        $.post(API, { action: 'get_quiz_teacher', batch_id: BATCH_ID, quiz_id: QUIZ_ID }, function(res) {
-            if (!res.success) {
+        poolStats = null;
+        $.when(
+            $.post(API, { action: 'get_quiz_teacher', batch_id: BATCH_ID, quiz_id: QUIZ_ID }),
+            $.post(API, { action: 'quiz_question_pool_stats_teacher', batch_id: BATCH_ID, quiz_id: QUIZ_ID })
+        ).done(function(a, b) {
+            const resQ = a[0];
+            const resP = b[0];
+            if (!resQ.success) {
                 $('#needAuth').removeClass('hidden');
                 $('#batchLink').attr('href', 'batch?id=' + encodeURIComponent(BATCH_ID));
                 return;
             }
-            quizPayload = res.quiz;
+            quizPayload = resQ.quiz;
+            if (resP.success && resP.pool_stats) {
+                poolStats = resP.pool_stats;
+            }
             $('#mainContent').removeClass('hidden');
             renderList();
-        }, 'json');
+        });
     }
+
+    function closePoolStatModal() {
+        $('#modalPoolStat').addClass('hidden').removeClass('flex').attr('aria-hidden', 'true');
+    }
+
+    $(document).on('click', '.stat-pool-btn', function() {
+        if ($(this).prop('disabled')) return;
+        const pool = parseInt($(this).data('pool'), 10);
+        const kind = $(this).data('kind');
+        if (isNaN(pool) || !kind) return;
+        openPoolStatModal(pool, kind);
+    });
+    $(document).on('click', '.close-pool-stat', function() { closePoolStatModal(); });
+    $('#modalPoolStat').on('click', function(e) { if (e.target === this) closePoolStatModal(); });
 
     $('#btnAddQuestion').click(function() {
         openAddModal();

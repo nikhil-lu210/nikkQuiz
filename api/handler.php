@@ -550,6 +550,21 @@ try {
             echo json_encode(['success' => true, 'stats' => $stats]);
             break;
 
+        case 'quiz_question_pool_stats_teacher':
+            $batchId = $_POST['batch_id'] ?? $_GET['batch_id'] ?? '';
+            $quizId = $_POST['quiz_id'] ?? $_GET['quiz_id'] ?? '';
+            if ($batchId === '' || $quizId === '' || !require_teacher_batch($batchId)) {
+                echo json_encode(['success' => false, 'error' => 'Unauthorized.']);
+                exit;
+            }
+            $poolStats = $statsService->getQuizQuestionPoolStats($batchId, $quizId);
+            if ($poolStats === null) {
+                echo json_encode(['success' => false, 'error' => 'Quiz not found.']);
+                exit;
+            }
+            echo json_encode(['success' => true, 'pool_stats' => $poolStats]);
+            break;
+
         case 'quiz_participant_detail_teacher':
             $batchId = $_POST['batch_id'] ?? $_GET['batch_id'] ?? '';
             $quizId = $_POST['quiz_id'] ?? $_GET['quiz_id'] ?? '';
