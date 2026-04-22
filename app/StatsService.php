@@ -547,6 +547,14 @@ class StatsService
         $poolCount = count($questions);
         $perQuestion = [];
         for ($i = 0; $i < $poolCount; $i++) {
+            $nOpts = \count($questions[$i]['options'] ?? []);
+            $perOpt = [];
+            for ($j = 0; $j < $nOpts; $j++) {
+                $perOpt[$j] = [
+                    'count' => 0,
+                    'participants' => [],
+                ];
+            }
             $perQuestion[] = [
                 'attempts' => 0,
                 'correct' => 0,
@@ -554,6 +562,7 @@ class StatsService
                 'attempt_participants' => [],
                 'correct_participants' => [],
                 'wrong_participants' => [],
+                'per_option' => $perOpt,
             ];
         }
         if ($poolCount === 0) {
@@ -588,6 +597,14 @@ class StatsService
                 }
                 $perQuestion[$qIdx]['attempts']++;
                 $perQuestion[$qIdx]['attempt_participants'][] = $who;
+                $nOptsQ = \count($questions[$qIdx]['options'] ?? []);
+                if (array_key_exists($qIdx, $byQ)) {
+                    $sel = $byQ[$qIdx];
+                    if ($sel >= 0 && $sel < $nOptsQ && isset($perQuestion[$qIdx]['per_option'][$sel])) {
+                        $perQuestion[$qIdx]['per_option'][$sel]['count']++;
+                        $perQuestion[$qIdx]['per_option'][$sel]['participants'][] = $who;
+                    }
+                }
                 $correctIdx = (int) ($questions[$qIdx]['answer'] ?? 0);
                 if (array_key_exists($qIdx, $byQ) && $byQ[$qIdx] === $correctIdx) {
                     $perQuestion[$qIdx]['correct']++;
@@ -603,6 +620,11 @@ class StatsService
             $perQuestion[$i]['attempt_participants'] = self::sortParticipantRowsForDisplay($row['attempt_participants'] ?? []);
             $perQuestion[$i]['correct_participants'] = self::sortParticipantRowsForDisplay($row['correct_participants'] ?? []);
             $perQuestion[$i]['wrong_participants'] = self::sortParticipantRowsForDisplay($row['wrong_participants'] ?? []);
+            foreach ($row['per_option'] ?? [] as $j => $bucket) {
+                $sorted = self::sortParticipantRowsForDisplay($bucket['participants'] ?? []);
+                $perQuestion[$i]['per_option'][$j]['participants'] = $sorted;
+                $perQuestion[$i]['per_option'][$j]['count'] = \count($sorted);
+            }
         }
 
         return ['per_question' => $perQuestion];

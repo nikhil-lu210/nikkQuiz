@@ -91,6 +91,39 @@ SiteAuth::requirePage();
             color: #be123c;
         }
         .stat-pool-btn--bad:not(:disabled):hover { background: #ffe4e6; border-color: #fb7185; }
+        .opt-sel-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 2.75rem;
+            padding: 0.35rem 0.6rem;
+            font-size: 0.8125rem;
+            font-weight: 700;
+            line-height: 1.2;
+            border-radius: 0.375rem;
+            border: 1px solid #cbd5e1;
+            background: #fff;
+            color: #4f46e5;
+            flex-shrink: 0;
+            align-self: center;
+            margin: 0.35rem 0.5rem 0.35rem 0;
+            transition: transform 0.12s, box-shadow 0.12s, background 0.12s, border-color 0.12s;
+        }
+        .opt-sel-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 1px 6px rgba(15, 23, 42, 0.1);
+            background: #eef2ff;
+            border-color: #a5b4fc;
+        }
+        .quiz-option--correct .opt-sel-btn {
+            background: #f0fdf4;
+            border-color: #6ee7b0;
+            color: #047857;
+        }
+        .quiz-option--correct .opt-sel-btn:hover {
+            background: #dcfce7;
+            border-color: #34d399;
+        }
     </style>
 </head>
 <body class="qp-page min-h-screen bg-slate-50">
@@ -124,6 +157,15 @@ SiteAuth::requirePage();
             <h3 class="text-lg font-bold bp-heading pr-8 mb-1" id="modalPoolStatTitle">Participants</h3>
             <p class="text-xs text-slate-500 mb-4" id="modalPoolStatSub"></p>
             <ul class="max-h-72 overflow-y-auto space-y-2 text-sm" id="modalPoolStatList"></ul>
+        </div>
+    </div>
+
+    <div id="modalOptionStat" class="fixed inset-0 z-50 hidden items-center justify-center bp-modal-overlay p-4 overflow-y-auto" aria-hidden="true">
+        <div class="bp-modal-card rounded-xl w-full max-w-md p-6 sm:p-7 relative my-8 shadow-lg">
+            <button type="button" class="close-option-stat absolute top-4 right-4 text-slate-400 hover:text-slate-700 text-xl leading-none" aria-label="Close">×</button>
+            <h3 class="text-lg font-bold bp-heading pr-8 mb-1" id="modalOptionStatTitle">Participants</h3>
+            <p class="text-xs text-slate-500 mb-4" id="modalOptionStatSub"></p>
+            <ul class="max-h-72 overflow-y-auto space-y-2 text-sm" id="modalOptionStatList"></ul>
         </div>
     </div>
 
@@ -232,6 +274,7 @@ SiteAuth::requirePage();
     }
 
     function openPoolStatModal(poolIndex, kind) {
+        closeOptionStatModal();
         const pq = (poolStats && poolStats.per_question) ? (poolStats.per_question[poolIndex] || {}) : {};
         const qn = poolIndex + 1;
         let key = 'attempt_participants';
@@ -262,6 +305,40 @@ SiteAuth::requirePage();
             $('#modalPoolStatList').html(li);
         }
         $('#modalPoolStat').removeClass('hidden').addClass('flex').attr('aria-hidden', 'false');
+    }
+
+    function closeOptionStatModal() {
+        $('#modalOptionStat').addClass('hidden').removeClass('flex').attr('aria-hidden', 'true');
+    }
+
+    function openOptionStatModal(poolIndex, optionIndex) {
+        const pq = (poolStats && poolStats.per_question) ? (poolStats.per_question[poolIndex] || {}) : {};
+        const perOpt = pq.per_option || [];
+        const bucket = perOpt[optionIndex] || { count: 0, participants: [] };
+        const list = bucket.participants || [];
+        const qn = poolIndex + 1;
+        const q = (quizPayload && quizPayload.questions) ? quizPayload.questions[poolIndex] : null;
+        const optLetter = optionLetter(optionIndex);
+        const rawOpt = (q && q.options && q.options[optionIndex]) != null ? String(q.options[optionIndex]) : '';
+        const shortOpt = rawOpt.length > 90 ? rawOpt.slice(0, 87) + '…' : rawOpt;
+        closePoolStatModal();
+        $('#modalOptionStatTitle').text('Question ' + qn + ' — option ' + optLetter);
+        $('#modalOptionStatSub').text(
+            (shortOpt ? '“' + shortOpt + '”' : 'Students who chose this option on a finished attempt (no answer is not included).')
+        );
+        if (list.length === 0) {
+            $('#modalOptionStatList').html('<li class="text-slate-500 text-center py-4">No students chose this option.</li>');
+        } else {
+            let li = '';
+            list.forEach(function(p) {
+                li += '<li class="bp-surface rounded-lg px-3 py-2.5 border border-slate-200 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">';
+                li += '<span class="text-slate-900 font-medium">' + escapeHtml(p.participant_name || '—') + '</span>';
+                li += '<span class="text-xs text-slate-500 font-mono">' + escapeHtml(p.participant_id || '') + '</span>';
+                li += '</li>';
+            });
+            $('#modalOptionStatList').html(li);
+        }
+        $('#modalOptionStat').removeClass('hidden').addClass('flex').attr('aria-hidden', 'false');
     }
 
     function openEditModal(poolIndex) {
@@ -318,13 +395,20 @@ SiteAuth::requirePage();
                 '<button type="button" class="stat-pool-btn stat-pool-btn--bad" data-pool="' + poolIndex + '" data-kind="wrong" title="Open list: wrong or no answer">' +
                 '<span class="tabular-nums text-base">' + nBad + '</span> wrong</button></div>';
             const opts = q.options || [];
+            const perOpt = s.per_option || [];
             let optsHtml = '<ul class="mt-3 space-y-2">';
             opts.forEach(function(o, oi) {
                 const ans = parseInt(q.answer, 10);
                 const correct = !isNaN(ans) && ans === oi;
                 const rowCls = correct ? 'quiz-option--correct' : 'quiz-option--neutral';
-                optsHtml += '<li class="rounded-lg border px-3 py-2 text-sm ' + rowCls + '"' + (correct ? ' aria-label="Correct answer"' : '') + '>';
-                optsHtml += '<span class="text-gray-500 mr-2">' + optionLetter(oi) + '.</span>' + escapeHtml(String(o));
+                const ob = perOpt[oi] || { count: 0 };
+                const oc = Number(ob.count) || 0;
+                optsHtml += '<li class="flex items-stretch gap-0 rounded-lg border overflow-hidden text-sm ' + rowCls + '"' + (correct ? ' aria-label="Correct answer"' : '') + '>';
+                optsHtml += '<div class="min-w-0 flex-1 flex items-start gap-2 px-3 py-2.5">';
+                optsHtml += '<span class="text-gray-500 mr-0 shrink-0 w-5">' + optionLetter(oi) + '.</span>';
+                optsHtml += '<span class="text-slate-800 leading-relaxed">' + escapeHtml(String(o)) + '</span>';
+                optsHtml += '</div>';
+                optsHtml += '<button type="button" class="opt-sel-btn" data-pool="' + poolIndex + '" data-option="' + oi + '" title="Open list: students who chose this option">' + oc + '</button>';
                 optsHtml += '</li>';
             });
             optsHtml += '</ul>';
@@ -380,6 +464,16 @@ SiteAuth::requirePage();
     });
     $(document).on('click', '.close-pool-stat', function() { closePoolStatModal(); });
     $('#modalPoolStat').on('click', function(e) { if (e.target === this) closePoolStatModal(); });
+
+    $(document).on('click', '.opt-sel-btn', function(e) {
+        e.stopPropagation();
+        const pool = parseInt($(this).data('pool'), 10);
+        const opt = parseInt($(this).data('option'), 10);
+        if (isNaN(pool) || isNaN(opt)) return;
+        openOptionStatModal(pool, opt);
+    });
+    $(document).on('click', '.close-option-stat', function() { closeOptionStatModal(); });
+    $('#modalOptionStat').on('click', function(e) { if (e.target === this) closeOptionStatModal(); });
 
     $('#btnAddQuestion').click(function() {
         openAddModal();
