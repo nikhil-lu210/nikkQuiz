@@ -156,14 +156,14 @@ SiteAuth::requirePage();
                 $('#participantRows').off('click keydown', 'tr').on('click', 'tr', function() {
                     const pid = $(this).attr('data-participant-id');
                     if (pid) {
-                        window.location.href = 'participant_detail?batch_id=' + encodeURIComponent(BATCH_ID) + '&participant_id=' + encodeURIComponent(pid);
+                        window.location.href = 'quiz_participant_detail?batch_id=' + encodeURIComponent(BATCH_ID) + '&quiz_id=' + encodeURIComponent(QUIZ_ID) + '&participant_id=' + encodeURIComponent(pid);
                     }
                 }).on('keydown', 'tr', function(e) {
                     if (e.key !== 'Enter' && e.key !== ' ') return;
                     e.preventDefault();
                     const pid = $(this).attr('data-participant-id');
                     if (pid) {
-                        window.location.href = 'participant_detail?batch_id=' + encodeURIComponent(BATCH_ID) + '&participant_id=' + encodeURIComponent(pid);
+                        window.location.href = 'quiz_participant_detail?batch_id=' + encodeURIComponent(BATCH_ID) + '&quiz_id=' + encodeURIComponent(QUIZ_ID) + '&participant_id=' + encodeURIComponent(pid);
                     }
                 });
             }

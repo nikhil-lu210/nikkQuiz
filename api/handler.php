@@ -550,6 +550,22 @@ try {
             echo json_encode(['success' => true, 'stats' => $stats]);
             break;
 
+        case 'quiz_participant_detail_teacher':
+            $batchId = $_POST['batch_id'] ?? $_GET['batch_id'] ?? '';
+            $quizId = $_POST['quiz_id'] ?? $_GET['quiz_id'] ?? '';
+            $participantId = $_POST['participant_id'] ?? $_GET['participant_id'] ?? '';
+            if ($batchId === '' || $quizId === '' || $participantId === '' || !require_teacher_batch($batchId)) {
+                echo json_encode(['success' => false, 'error' => 'Unauthorized.']);
+                exit;
+            }
+            $detail = $statsService->getTeacherParticipantQuizDetail($batchId, $quizId, $participantId);
+            if ($detail === null) {
+                echo json_encode(['success' => false, 'error' => 'Not found.']);
+                exit;
+            }
+            echo json_encode(['success' => true, 'detail' => $detail]);
+            break;
+
         case 'list_active_quizzes':
             echo json_encode(['success' => true, 'quizzes' => $quizManager->listActiveQuizzesWithBatchNames()]);
             break;

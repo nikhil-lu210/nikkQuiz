@@ -733,6 +733,43 @@ class StatsService
     }
 
     /**
+     * Teacher: one student’s answers for one quiz in the batch (same fields as
+     * {@see getStudentQuizDetail} plus batch / participant context).
+     *
+     * @return array<string, mixed>|null
+     */
+    public function getTeacherParticipantQuizDetail(string $batchId, string $quizId, string $participantId): ?array
+    {
+        $batch = $this->batchManager->loadBatch($batchId);
+        if (!$batch) {
+            return null;
+        }
+        $participantName = '';
+        $found = false;
+        foreach ($batch['participants'] ?? [] as $p) {
+            if (($p['id'] ?? '') === $participantId) {
+                $participantName = $p['name'] ?? '';
+                $found = true;
+                break;
+            }
+        }
+        if (!$found) {
+            return null;
+        }
+        $base = $this->getStudentQuizDetail($batchId, $participantId, $quizId);
+        if ($base === null) {
+            return null;
+        }
+
+        return array_merge($base, [
+            'batch_id' => $batchId,
+            'batch_name' => $batch['batch_info']['name'] ?? '',
+            'participant_id' => $participantId,
+            'participant_name' => $participantName,
+        ]);
+    }
+
+    /**
      * @param array{answers?: array, assigned_questions?: array} $att
      * @return list<array<string, mixed>>
      */
