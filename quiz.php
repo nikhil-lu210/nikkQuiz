@@ -44,9 +44,10 @@ SiteAuth::requirePage();
 
             <h2 class="text-lg font-semibold text-gray-200 mb-3">Participants</h2>
             <div class="glass-card rounded-xl overflow-x-auto mb-10">
-                <table class="w-full text-sm min-w-[900px]">
+                <table class="w-full text-sm min-w-[960px]">
                     <thead>
                         <tr class="border-b border-gray-800 text-left text-xs text-gray-500 uppercase tracking-wider">
+                            <th class="px-4 py-3 w-16 text-center">Rank</th>
                             <th class="px-4 py-3">Student</th>
                             <th class="px-4 py-3">Status</th>
                             <th class="px-4 py-3 text-center">Score</th>
@@ -114,7 +115,8 @@ SiteAuth::requirePage();
 
                 let pr = '';
                 (s.participants || []).forEach(function(p) {
-                    let st = '';
+                        let st = '';
+                    let rankCell = '—';
                     let score = '—';
                     let pct = '—';
                     let gr = '—';
@@ -128,6 +130,9 @@ SiteAuth::requirePage();
                         tStart = escapeHtml(p.started_at || '—');
                     } else if (p.status === 'finished') {
                         st = '<span class="text-emerald-400">Completed</span>';
+                        if (p.rank != null) {
+                            rankCell = String(p.rank);
+                        }
                         score = (p.marks != null ? p.marks : 0) + '/' + (p.total || 0);
                         pct = (p.percentage != null ? p.percentage : 0) + '%';
                         gr = (p.emoji || '') + ' <span class="text-gray-500 text-xs">' + escapeHtml(p.grade || '') + '</span>';
@@ -135,8 +140,9 @@ SiteAuth::requirePage();
                         tEnd = escapeHtml(p.completed_at || '—');
                         tDur = p.total_time != null && p.total_time !== '' ? escapeHtml(p.total_time) : '—';
                     }
-                    pr += '<tr class="border-b border-gray-800/50 hover:bg-white/5">';
-                    pr += '<td class="px-4 py-3"><span class="text-white font-medium">' + escapeHtml(p.participant_name) + '</span><br><span class="text-[10px] text-gray-500 font-mono">' + escapeHtml(p.participant_id) + '</span></td>';
+                    pr += '<tr class="border-b border-gray-800/50 hover:bg-violet-500/10 cursor-pointer" title="View answers" tabindex="0" data-participant-id="' + escapeHtml(p.participant_id) + '">';
+                    pr += '<td class="px-4 py-3 text-center text-violet-300 font-semibold tabular-nums">' + rankCell + '</td>';
+                    pr += '<td class="px-4 py-3 min-w-0"><span class="text-white font-medium">' + escapeHtml(p.participant_name) + '</span><br><span class="text-[10px] text-gray-500 font-mono break-all">' + escapeHtml(p.participant_id) + '</span></td>';
                     pr += '<td class="px-4 py-3">' + st + '</td>';
                     pr += '<td class="px-4 py-3 text-center text-violet-300">' + score + '</td>';
                     pr += '<td class="px-4 py-3 text-center">' + pct + '</td>';
@@ -145,7 +151,21 @@ SiteAuth::requirePage();
                     pr += '<td class="px-4 py-3 text-right text-xs text-gray-500 whitespace-nowrap">' + tEnd + '</td>';
                     pr += '<td class="px-4 py-3 text-right text-xs text-violet-300/90 font-medium whitespace-nowrap">' + tDur + '</td></tr>';
                 });
-                $('#participantRows').html(pr || '<tr><td colspan="8" class="px-4 py-8 text-center text-gray-500">No roster data.</td></tr>');
+                $('#participantRows').html(pr || '<tr><td colspan="9" class="px-4 py-8 text-center text-gray-500">No roster data.</td></tr>');
+
+                $('#participantRows').off('click keydown', 'tr').on('click', 'tr', function() {
+                    const pid = $(this).attr('data-participant-id');
+                    if (pid) {
+                        window.location.href = 'participant_detail?batch_id=' + encodeURIComponent(BATCH_ID) + '&participant_id=' + encodeURIComponent(pid);
+                    }
+                }).on('keydown', 'tr', function(e) {
+                    if (e.key !== 'Enter' && e.key !== ' ') return;
+                    e.preventDefault();
+                    const pid = $(this).attr('data-participant-id');
+                    if (pid) {
+                        window.location.href = 'participant_detail?batch_id=' + encodeURIComponent(BATCH_ID) + '&participant_id=' + encodeURIComponent(pid);
+                    }
+                });
             }
 
             let qh = '';

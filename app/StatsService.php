@@ -35,6 +35,21 @@ class StatsService
         return sprintf('%dm %02ds', $m, $s);
     }
 
+    /** Elapsed seconds for a finished attempt, or null if times are missing. */
+    public static function attemptDurationSeconds(?string $start, ?string $end): ?int
+    {
+        if ($start === null || $end === null || $start === '' || $end === '') {
+            return null;
+        }
+        $t1 = strtotime($start);
+        $t2 = strtotime($end);
+        if ($t1 === false || $t2 === false) {
+            return null;
+        }
+
+        return max(0, $t2 - $t1);
+    }
+
     /** @return array{grade: string, emoji: string} */
     public static function gradeFromPercent(int $pct): array
     {
@@ -389,6 +404,8 @@ class StatsService
                     'started_at' => null,
                     'completed_at' => null,
                     'total_time' => null,
+                    'total_time_seconds' => null,
+                    'rank' => null,
                 ];
                 continue;
             }
@@ -406,6 +423,8 @@ class StatsService
                     'started_at' => $att['start_time'] ?? null,
                     'completed_at' => null,
                     'total_time' => null,
+                    'total_time_seconds' => null,
+                    'rank' => null,
                 ];
                 continue;
             }
@@ -417,6 +436,7 @@ class StatsService
                 $finishedPcts[] = $pct;
                 $startT = $att['start_time'] ?? null;
                 $endT = $att['end_time'] ?? null;
+                $timeSec = self::attemptDurationSeconds($startT, $endT);
                 $detailRows[] = [
                     'participant_id' => $pid,
                     'participant_name' => $p['name'] ?? '',
@@ -429,9 +449,65 @@ class StatsService
                     'started_at' => $startT,
                     'completed_at' => $endT,
                     'total_time' => self::formatAttemptDuration($startT, $endT),
+                    'total_time_seconds' => $timeSec,
+                    'rank' => null,
                 ];
             }
         }
+
+        $finishedForRank = array_values(array_filter(
+            $detailRows,
+            static fn(array $r): bool => ($r['status'] ?? '') === 'finished',
+        ));
+        usort(
+            $finishedForRank,
+            static function (array $a, array $b): int {
+                $ma = (int)($a['marks'] ?? 0);
+                $mb = (int)($b['marks'] ?? 0);
+                if ($ma !== $mb) {
+                    return $mb <=> $ma;
+                }
+                $sa = $a['total_time_seconds'] ?? null;
+                $sb = $b['total_time_seconds'] ?? null;
+                if ($sa === null) {
+                    $sa = PHP_INT_MAX;
+                }
+                if ($sb === null) {
+                    $sb = PHP_INT_MAX;
+                }
+                if ($sa !== $sb) {
+                    return $sa <=> $sb;
+                }
+
+                return strcmp((string)($a['participant_id'] ?? ''), (string)($b['participant_id'] ?? ''));
+            },
+        );
+        $rankByPid = [];
+        foreach (array_values($finishedForRank) as $i => $row) {
+            $rankByPid[$row['participant_id']] = $i + 1;
+        }
+        foreach ($detailRows as $k => $row) {
+            if (($row['status'] ?? '') === 'finished' && isset($rankByPid[$row['participant_id']])) {
+                $detailRows[$k]['rank'] = $rankByPid[$row['participant_id']];
+            }
+        }
+
+        $rankedRows = [];
+        $unrankedRows = [];
+        foreach ($detailRows as $row) {
+            if (($row['status'] ?? '') === 'finished' && $row['rank'] !== null) {
+                $rankedRows[] = $row;
+            } else {
+                $unrankedRows[] = $row;
+            }
+        }
+        usort(
+            $rankedRows,
+            static function (array $a, array $b): int {
+                return (int)($a['rank'] ?? 0) <=> (int)($b['rank'] ?? 0);
+            },
+        );
+        $detailRows = array_merge($rankedRows, $unrankedRows);
 
         $nRoster = count($batch['participants'] ?? []);
         $nFinished = count($finishedPcts);
