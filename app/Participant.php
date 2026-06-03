@@ -40,7 +40,7 @@ class Participant
         return $id;
     }
 
-    public function addParticipant(string $batchId, string $name): ?array
+    public function addParticipant(string $batchId, string $name, string $email = ''): ?array
     {
         $data = $this->batchManager->loadBatch($batchId);
         if (!$data) {
@@ -54,6 +54,7 @@ class Participant
             'id' => $participantId,
             'name' => trim($name),
             'pin' => $pin,
+            'email' => trim($email),
         ];
 
         $data['participants'][] = $participant;
@@ -77,7 +78,7 @@ class Participant
         return $this->batchManager->saveBatch($batchId, $data);
     }
 
-    public function updateParticipantName(string $batchId, string $participantId, string $name): bool
+    public function updateParticipantName(string $batchId, string $participantId, string $name, ?string $email = null): bool
     {
         $name = trim($name);
         if ($name === '') {
@@ -91,6 +92,9 @@ class Participant
         foreach ($data['participants'] as &$p) {
             if (($p['id'] ?? '') === $participantId) {
                 $p['name'] = $name;
+                if ($email !== null) {
+                    $p['email'] = trim($email);
+                }
                 $found = true;
                 break;
             }
@@ -106,7 +110,7 @@ class Participant
             return null;
         }
         $stmt = $this->pdo->prepare(
-            'SELECT p.id, p.name, p.pin, p.batch_id, b.name AS batch_name
+            'SELECT p.id, p.name, p.pin, p.email, p.batch_id, b.name AS batch_name
              FROM participants p
              INNER JOIN batches b ON b.id = p.batch_id
              WHERE p.pin = ? LIMIT 1'
@@ -124,6 +128,7 @@ class Participant
                 'id' => $row['id'],
                 'name' => $row['name'],
                 'pin' => $row['pin'],
+                'email' => $row['email'] ?? '',
             ],
         ];
     }

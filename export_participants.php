@@ -50,10 +50,11 @@ $xmlCell = static function (string $s): string {
 };
 
 $rows = [];
-$rows[] = '<Row>' . $xmlCell('Name') . $xmlCell('Participant ID') . $xmlCell('PIN') . '</Row>';
+$rows[] = '<Row>' . $xmlCell('Name') . $xmlCell('Email') . $xmlCell('Participant ID') . $xmlCell('PIN') . '</Row>';
 foreach ($participants as $p) {
     $rows[] = '<Row>'
         . $xmlCell((string) ($p['name'] ?? ''))
+        . $xmlCell((string) ($p['email'] ?? ''))
         . $xmlCell((string) ($p['id'] ?? ''))
         . $xmlCell((string) ($p['pin'] ?? ''))
         . '</Row>';

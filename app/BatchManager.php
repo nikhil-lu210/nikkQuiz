@@ -91,7 +91,7 @@ class BatchManager
             ]);
             $this->pdo->prepare('DELETE FROM participants WHERE batch_id = ?')->execute([$batchId]);
             $ins = $this->pdo->prepare(
-                'INSERT INTO participants (id, batch_id, name, pin) VALUES (?,?,?,?)'
+                'INSERT INTO participants (id, batch_id, name, pin, email) VALUES (?,?,?,?,?)'
             );
             foreach ($data['participants'] ?? [] as $p) {
                 $ins->execute([
@@ -99,6 +99,7 @@ class BatchManager
                     $batchId,
                     $p['name'] ?? '',
                     $p['pin'] ?? '',
+                    $p['email'] ?? '',
                 ]);
             }
             $this->pdo->commit();
@@ -131,13 +132,14 @@ class BatchManager
             ],
             'participants' => [],
         ];
-        $pstmt = $this->pdo->prepare('SELECT id, name, pin FROM participants WHERE batch_id = ? ORDER BY id');
+        $pstmt = $this->pdo->prepare('SELECT id, name, pin, email FROM participants WHERE batch_id = ? ORDER BY id');
         $pstmt->execute([$batchId]);
         while ($p = $pstmt->fetch(\PDO::FETCH_ASSOC)) {
             $data['participants'][] = [
                 'id' => $p['id'],
                 'name' => $p['name'],
                 'pin' => $p['pin'],
+                'email' => $p['email'] ?? '',
             ];
         }
         if ($migrate && $this->migrateBatchData($data)) {
@@ -145,6 +147,36 @@ class BatchManager
         }
 
         return $data;
+    }
+
+    /**
+     * Update batch display name, teacher name, and optionally teacher password.
+     */
+    public function updateBatchInfo(
+        string $batchId,
+        string $name,
+        string $teacherName,
+        ?string $newTeacherPassword = null
+    ): bool {
+        $name = trim($name);
+        $teacherName = trim($teacherName);
+        if ($name === '' || $teacherName === '') {
+            return false;
+        }
+        $data = $this->loadBatch($batchId, false);
+        if (!$data) {
+            return false;
+        }
+        $data['batch_info']['name'] = $name;
+        $data['batch_info']['teacher_name'] = $teacherName;
+        if ($newTeacherPassword !== null && $newTeacherPassword !== '') {
+            if (strlen($newTeacherPassword) < 4) {
+                return false;
+            }
+            $data['batch_info']['teacher_password'] = password_hash($newTeacherPassword, PASSWORD_DEFAULT);
+        }
+
+        return $this->saveBatch($batchId, $data);
     }
 
     public function verifyTeacherPassword(string $batchId, string $password): bool
@@ -216,7 +248,7 @@ class BatchManager
                 $bi['created_at'] ?? date('Y-m-d H:i:s'),
             ]);
             $ins = $this->pdo->prepare(
-                'INSERT INTO participants (id, batch_id, name, pin) VALUES (?,?,?,?)'
+                'INSERT INTO participants (id, batch_id, name, pin, email) VALUES (?,?,?,?,?)'
             );
             foreach ($data['participants'] ?? [] as $p) {
                 $ins->execute([
@@ -224,6 +256,7 @@ class BatchManager
                     $bi['id'],
                     $p['name'] ?? '',
                     $p['pin'] ?? '',
+                    $p['email'] ?? '',
                 ]);
             }
             $this->pdo->commit();

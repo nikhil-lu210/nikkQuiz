@@ -169,6 +169,36 @@ try {
             echo json_encode(['success' => true, 'batch' => $data]);
             break;
 
+        case 'update_batch':
+            $batchId = $_POST['batch_id'] ?? '';
+            $name = trim($_POST['name'] ?? '');
+            $teacherName = trim($_POST['teacher_name'] ?? '');
+            if ($batchId === '' || !require_teacher_batch($batchId)) {
+                echo json_encode(['success' => false, 'error' => 'Unauthorized.']);
+                exit;
+            }
+            if ($name === '' || $teacherName === '') {
+                echo json_encode(['success' => false, 'error' => 'Batch name and teacher name are required.']);
+                exit;
+            }
+            $newPassword = null;
+            if (array_key_exists('teacher_password', $_POST)) {
+                $rawPw = trim((string) $_POST['teacher_password']);
+                if ($rawPw !== '') {
+                    if (strlen($rawPw) < 4) {
+                        echo json_encode(['success' => false, 'error' => 'New password must be at least 4 characters.']);
+                        exit;
+                    }
+                    $newPassword = $rawPw;
+                }
+            }
+            if ($batchManager->updateBatchInfo($batchId, $name, $teacherName, $newPassword)) {
+                echo json_encode(['success' => true]);
+            } else {
+                echo json_encode(['success' => false, 'error' => 'Could not update batch.']);
+            }
+            break;
+
         case 'delete_batch':
             $batchId = $_POST['batch_id'] ?? '';
             if ($batchId === '' || !require_teacher_batch($batchId)) {
@@ -187,6 +217,7 @@ try {
         case 'add_batch_participant':
             $batchId = $_POST['batch_id'] ?? '';
             $name = trim($_POST['name'] ?? '');
+            $email = trim($_POST['email'] ?? '');
             if ($batchId === '' || !require_teacher_batch($batchId)) {
                 echo json_encode(['success' => false, 'error' => 'Unauthorized.']);
                 exit;
@@ -195,7 +226,11 @@ try {
                 echo json_encode(['success' => false, 'error' => 'Name is required.']);
                 exit;
             }
-            $p = $participant->addParticipant($batchId, $name);
+            if ($email !== '' && !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                echo json_encode(['success' => false, 'error' => 'Invalid email address.']);
+                exit;
+            }
+            $p = $participant->addParticipant($batchId, $name, $email);
             if ($p) {
                 echo json_encode(['success' => true, 'participant' => $p]);
             } else {
@@ -221,6 +256,7 @@ try {
             $batchId = $_POST['batch_id'] ?? '';
             $participantId = $_POST['participant_id'] ?? '';
             $name = trim($_POST['name'] ?? '');
+            $email = trim($_POST['email'] ?? '');
             if ($batchId === '' || !require_teacher_batch($batchId)) {
                 echo json_encode(['success' => false, 'error' => 'Unauthorized.']);
                 exit;
@@ -229,7 +265,11 @@ try {
                 echo json_encode(['success' => false, 'error' => 'Participant and name are required.']);
                 exit;
             }
-            if ($participant->updateParticipantName($batchId, $participantId, $name)) {
+            if ($email !== '' && !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                echo json_encode(['success' => false, 'error' => 'Invalid email address.']);
+                exit;
+            }
+            if ($participant->updateParticipantName($batchId, $participantId, $name, $email)) {
                 echo json_encode(['success' => true]);
             } else {
                 echo json_encode(['success' => false, 'error' => 'Could not update name.']);

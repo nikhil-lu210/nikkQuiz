@@ -53,6 +53,7 @@ final class Database
             )'
         );
         $pdo->exec('CREATE INDEX IF NOT EXISTS idx_participants_batch ON participants(batch_id)');
+        self::ensureColumn($pdo, 'participants', 'email', 'TEXT NOT NULL DEFAULT \'\'');
 
         $pdo->exec(
             'CREATE TABLE IF NOT EXISTS quizzes (
@@ -115,5 +116,16 @@ final class Database
                 PRIMARY KEY (attempt_id, pool_index)
             )'
         );
+    }
+
+    private static function ensureColumn(\PDO $pdo, string $table, string $column, string $definition): void
+    {
+        $stmt = $pdo->query('PRAGMA table_info(' . $table . ')');
+        while ($row = $stmt->fetch(\PDO::FETCH_ASSOC)) {
+            if (($row['name'] ?? '') === $column) {
+                return;
+            }
+        }
+        $pdo->exec('ALTER TABLE ' . $table . ' ADD COLUMN ' . $column . ' ' . $definition);
     }
 }

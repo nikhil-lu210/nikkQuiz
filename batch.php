@@ -101,6 +101,7 @@ $exportBatchId = isset($_GET['id']) ? (string) $_GET['id'] : '';
                 <a href="index" class="text-sm bp-muted hover:text-indigo-600 mb-2 inline-block">← Batches</a>
                 <h1 class="text-2xl sm:text-3xl font-bold bp-heading" id="dashTitle">…</h1>
                 <p class="bp-muted text-sm mt-1" id="dashSub"></p>
+                <button type="button" id="btnEditBatch" class="mt-3 bp-btn bp-btn-secondary px-4 py-2 text-sm">Edit batch info</button>
             </div>
             <div class="hidden sm:block flex-shrink-0 w-44" aria-hidden="true">
                 <svg viewBox="0 0 200 120" class="w-full h-auto text-slate-300" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -220,7 +221,9 @@ $exportBatchId = isset($_GET['id']) ? (string) $_GET['id'] : '';
             <h3 class="text-lg font-bold bp-heading mb-4">Assign participant</h3>
             <form id="formParticipant">
                 <label class="block text-sm font-medium text-slate-700 mb-1">Student name</label>
-                <input type="text" name="name" required class="bp-input w-full px-4 py-2.5 text-sm mb-4" placeholder="Full name">
+                <input type="text" name="name" required class="bp-input w-full px-4 py-2.5 text-sm mb-3" placeholder="Full name">
+                <label class="block text-sm font-medium text-slate-700 mb-1">Email <span class="text-slate-400 font-normal">(optional)</span></label>
+                <input type="email" name="email" class="bp-input w-full px-4 py-2.5 text-sm mb-4" placeholder="student@example.com" autocomplete="email">
                 <button type="submit" class="bp-btn bp-btn-primary w-full py-2.5">Add participant</button>
             </form>
         </div>
@@ -234,8 +237,28 @@ $exportBatchId = isset($_GET['id']) ? (string) $_GET['id'] : '';
             <form id="formEditParticipant">
                 <input type="hidden" name="participant_id" id="editParticipantId" value="">
                 <label class="block text-sm font-medium text-slate-700 mb-1">Name</label>
-                <input type="text" name="name" id="editParticipantName" required class="bp-input w-full px-4 py-2.5 text-sm mb-4" placeholder="Full name">
-                <button type="submit" class="bp-btn bp-btn-primary w-full py-2.5">Save name</button>
+                <input type="text" name="name" id="editParticipantName" required class="bp-input w-full px-4 py-2.5 text-sm mb-3" placeholder="Full name">
+                <label class="block text-sm font-medium text-slate-700 mb-1">Email <span class="text-slate-400 font-normal">(optional)</span></label>
+                <input type="email" name="email" id="editParticipantEmail" class="bp-input w-full px-4 py-2.5 text-sm mb-4" placeholder="student@example.com" autocomplete="email">
+                <button type="submit" class="bp-btn bp-btn-primary w-full py-2.5">Save</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal: batch settings -->
+    <div id="modalBatch" class="fixed inset-0 z-50 hidden items-center justify-center bp-modal-overlay p-4">
+        <div class="bp-modal-card rounded-xl w-full max-w-md p-8 relative fade-in shadow-lg">
+            <button type="button" class="close-mod absolute top-4 right-4 text-slate-400 hover:text-slate-700 text-xl leading-none" data-close="modalBatch" aria-label="Close">×</button>
+            <h3 class="text-lg font-bold bp-heading mb-4">Edit batch info</h3>
+            <form id="formBatch">
+                <label class="block text-sm font-medium text-slate-700 mb-1">Batch name</label>
+                <input type="text" name="name" id="batchEditName" required class="bp-input w-full px-4 py-2.5 text-sm mb-3">
+                <label class="block text-sm font-medium text-slate-700 mb-1">Teacher name</label>
+                <input type="text" name="teacher_name" id="batchEditTeacher" required class="bp-input w-full px-4 py-2.5 text-sm mb-3">
+                <label class="block text-sm font-medium text-slate-700 mb-1">New teacher password <span class="text-slate-400 font-normal">(optional)</span></label>
+                <input type="password" name="teacher_password" id="batchEditPassword" class="bp-input w-full px-4 py-2.5 text-sm mb-1" placeholder="Leave blank to keep current" autocomplete="new-password" minlength="4">
+                <p class="text-xs bp-muted mb-4">At least 4 characters if you change it.</p>
+                <button type="submit" class="bp-btn bp-btn-primary w-full py-2.5">Save batch info</button>
             </form>
         </div>
     </div>
@@ -314,9 +337,10 @@ $exportBatchId = isset($_GET['id']) ? (string) $_GET['id'] : '';
             $('#noParticipants').removeClass('hidden');
         } else {
             $('#noParticipants').addClass('hidden');
-            let h = '<div class="bp-surface rounded-xl overflow-hidden shadow-sm"><div class="overflow-x-auto"><table class="w-full text-sm min-w-[640px]"><thead><tr class="border-b border-slate-200 bg-slate-50 text-left">';
+            let h = '<div class="bp-surface rounded-xl overflow-hidden shadow-sm"><div class="overflow-x-auto"><table class="w-full text-sm min-w-[760px]"><thead><tr class="border-b border-slate-200 bg-slate-50 text-left">';
             h += '<th scope="col" class="py-3 px-4 font-semibold text-slate-600">ID</th>';
             h += '<th scope="col" class="py-3 px-4 font-semibold text-slate-600">Name</th>';
+            h += '<th scope="col" class="py-3 px-4 font-semibold text-slate-600">Email</th>';
             h += '<th scope="col" class="py-3 px-4 font-semibold text-slate-600">PIN</th>';
             h += '<th scope="col" class="py-3 px-4 font-semibold text-slate-600 text-right w-32">Actions</th>';
             h += '</tr></thead><tbody>';
@@ -324,6 +348,8 @@ $exportBatchId = isset($_GET['id']) ? (string) $_GET['id'] : '';
                 h += `<tr class="border-b border-slate-100 last:border-0 hover:bg-slate-50/80 transition-colors" data-participant-id="${escapeHtml(p.id)}">`;
                 h += `<td class="py-3 px-4 font-mono text-xs sm:text-sm text-slate-800 align-middle">${escapeHtml(p.id)}</td>`;
                 h += `<td class="py-3 px-4 font-medium text-slate-900 align-middle">${escapeHtml(p.name)}</td>`;
+                const em = (p.email || '').trim();
+                h += `<td class="py-3 px-4 text-slate-600 align-middle">${em ? escapeHtml(em) : '<span class="bp-muted">—</span>'}</td>`;
                 h += `<td class="py-3 px-4 align-middle"><div class="flex flex-wrap items-center gap-2">`;
                 h += `<span class="pin-display font-mono text-slate-800 tracking-widest">••••••</span>`;
                 h += `<button type="button" class="btn-view-pin text-xs font-semibold text-indigo-600 hover:text-indigo-800 hover:underline" data-pin="${escapeHtml(p.pin)}">View PIN</button>`;
@@ -588,6 +614,15 @@ $exportBatchId = isset($_GET['id']) ? (string) $_GET['id'] : '';
         if (tab === 'stats') loadBatchStats();
     });
 
+    $('#btnEditBatch').click(function() {
+        if (!batchPayload || !batchPayload.batch_info) return;
+        const bi = batchPayload.batch_info;
+        $('#batchEditName').val(bi.name || '');
+        $('#batchEditTeacher').val(bi.teacher_name || '');
+        $('#batchEditPassword').val('');
+        $('#modalBatch').removeClass('hidden').addClass('flex');
+    });
+
     $('#btnAssignParticipant').click(() => {
         $('#formParticipant')[0].reset();
         $('#modalParticipant').removeClass('hidden').addClass('flex');
@@ -599,8 +634,30 @@ $exportBatchId = isset($_GET['id']) ? (string) $_GET['id'] : '';
     $('.close-mod').click(function() {
         $('#' + $(this).data('close')).removeClass('flex').addClass('hidden');
     });
-    $('#modalParticipant, #modalQuiz, #modalEditParticipant').click(function(e) {
+    $('#modalParticipant, #modalQuiz, #modalEditParticipant, #modalBatch').click(function(e) {
         if (e.target === this) $(this).removeClass('flex').addClass('hidden');
+    });
+
+    $('#formBatch').submit(function(e) {
+        e.preventDefault();
+        $.post(API, {
+            action: 'update_batch',
+            batch_id: BATCH_ID,
+            name: $('#batchEditName').val(),
+            teacher_name: $('#batchEditTeacher').val(),
+            teacher_password: $('#batchEditPassword').val()
+        }, function(res) {
+            if (res.success) {
+                $('#modalBatch').removeClass('flex').addClass('hidden');
+                toast('Batch info updated');
+                loadBatch();
+                document.title = $('#batchEditName').val() + ' — NikkQuiz';
+                $('#loginBatchTitle').text($('#batchEditName').val());
+                $('#loginTeacherLine').text('Teacher: ' + $('#batchEditTeacher').val());
+            } else {
+                toast(res.error, true);
+            }
+        }, 'json');
     });
 
     $('#formParticipant').submit(function(e) {
@@ -608,7 +665,8 @@ $exportBatchId = isset($_GET['id']) ? (string) $_GET['id'] : '';
         $.post(API, {
             action: 'add_batch_participant',
             batch_id: BATCH_ID,
-            name: this.name.value
+            name: this.name.value,
+            email: (this.email && this.email.value) ? this.email.value : ''
         }, function(res) {
             if (res.success) {
                 $('#modalParticipant').removeClass('flex').addClass('hidden');
@@ -622,16 +680,18 @@ $exportBatchId = isset($_GET['id']) ? (string) $_GET['id'] : '';
         e.preventDefault();
         const id = $('#editParticipantId').val();
         const name = $('#editParticipantName').val().trim();
+        const email = $('#editParticipantEmail').val().trim();
         if (!id || !name) return;
         $.post(API, {
             action: 'update_batch_participant_name',
             batch_id: BATCH_ID,
             participant_id: id,
-            name: name
+            name: name,
+            email: email
         }, function(res) {
             if (res.success) {
                 $('#modalEditParticipant').removeClass('flex').addClass('hidden');
-                toast('Name updated');
+                toast('Student updated');
                 loadBatch();
             } else {
                 toast(res.error, true);
@@ -659,6 +719,7 @@ $exportBatchId = isset($_GET['id']) ? (string) $_GET['id'] : '';
         if (!p) return;
         $('#editParticipantId').val(id);
         $('#editParticipantName').val(p.name);
+        $('#editParticipantEmail').val(p.email || '');
         $('#modalEditParticipant').removeClass('hidden').addClass('flex');
     });
 
