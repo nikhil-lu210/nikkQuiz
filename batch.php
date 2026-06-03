@@ -662,11 +662,14 @@ $exportBatchId = isset($_GET['id']) ? (string) $_GET['id'] : '';
 
     $('#formParticipant').submit(function(e) {
         e.preventDefault();
+        const form = this;
+        const nameInput = form.elements.namedItem('name');
+        const emailInput = form.elements.namedItem('email');
         $.post(API, {
             action: 'add_batch_participant',
             batch_id: BATCH_ID,
-            name: this.name.value,
-            email: (this.email && this.email.value) ? this.email.value : ''
+            name: nameInput ? nameInput.value : '',
+            email: emailInput ? emailInput.value : ''
         }, function(res) {
             if (res.success) {
                 $('#modalParticipant').removeClass('flex').addClass('hidden');
